@@ -4,6 +4,12 @@ HDR control for Windows displays with a compact, light C# WinUI 3 interface.
 Active displays are detected automatically; HDR is controlled directly through
 the Windows DisplayConfig APIs, without a separate CLI.
 
+## Screenshots
+
+| Displays | Settings |
+|:--:|:--:|
+| ![HDR Control Displays page](screenshots/displays.png) | ![HDR Control Settings page](screenshots/settings.png) |
+
 ## Features
 
 - View each active display's name and HDR status.
@@ -53,33 +59,3 @@ The self-contained x64 executable is written to:
 
 The Windows App SDK runtime and .NET runtime are bundled in the executable.
 The first launch extracts native runtime components to a temporary directory.
-
-## Create a GitHub release
-
-Push a version tag to build the single-file executable on Windows and publish
-it as a downloadable asset in a GitHub Release:
-
-```powershell
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-The release workflow verifies that `HDRControl.exe` is the only publish output
-before attaching it to the release.
-
-## Existing native Win32 version
-
-The original C++ Win32 prototype is kept under `src/` and can still be built with
-CMake:
-
-```powershell
-cmake -S . -B build
-cmake --build build --config Release
-```
-
-## Origin and license
-
-Display discovery and HDR control are based on
-[Vaiz/HdrSwitcher](https://github.com/Vaiz/HdrSwitcher). The original
-`LICENSE.txt` places the software in the public domain (Unlicense); it is
-included in this project. The graphical interface was created for this project.
