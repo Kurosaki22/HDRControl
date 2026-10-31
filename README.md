@@ -30,10 +30,6 @@ the Windows DisplayConfig APIs, without a separate CLI.
 - A custom HDR Control icon is embedded in the app and system tray.
 
 Shortcut assignments are saved under `%LocalAppData%\HDRControl\settings.json`.
-Existing settings from `%LocalAppData%\HdrSwitcher\settings.json` are loaded
-automatically and carried forward when the app next saves settings.
-The previous `HdrSwitcher` startup entry is also recognized and removed when
-you change the startup option.
 Set a monitor shortcut or the all-displays shortcut on the Displays page by
 clicking its field and pressing a modifier plus a key. Press Backspace to clear
 a shortcut. If at least one supported display has HDR off, the all-displays
