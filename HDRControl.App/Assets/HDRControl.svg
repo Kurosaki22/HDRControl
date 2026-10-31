@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="background" x1="54" y1="30" x2="459" y2="484" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202E68"/>
+      <stop offset=".52" stop-color="#2454B7"/>
+      <stop offset="1" stop-color="#16A9D2"/>
+    </linearGradient>
+    <linearGradient id="frame" x1="108" y1="144" x2="404" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset=".52" stop-color="#D9EBFF"/>
+      <stop offset="1" stop-color="#9CC8FF"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="154" y1="182" x2="356" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101A38"/>
+      <stop offset="1" stop-color="#233866"/>
+    </linearGradient>
+    <linearGradient id="spectrum" x1="155" y1="321" x2="356" y2="321" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4AE7FF"/>
+      <stop offset=".34" stop-color="#698AFF"/>
+      <stop offset=".67" stop-color="#C776FF"/>
+      <stop offset="1" stop-color="#FFB56B"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientTransform="matrix(0 60 -60 0 340 226)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8D6"/>
+      <stop offset=".67" stop-color="#FFD896"/>
+      <stop offset="1" stop-color="#FF9E79"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="matrix(0 170 -170 0 256 260)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#56DFFF" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#56DFFF" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="screenClip">
+      <rect x="145" y="170" width="222" height="157" rx="17"/>
+    </clipPath>
+  </defs>
+  <rect x="20" y="20" width="472" height="472" rx="126" fill="url(#background)"/>
+  <circle cx="256" cy="250" r="190" fill="url(#glow)"/>
+  <rect x="116" y="139" width="280" height="221" rx="29" fill="#09142F" fill-opacity=".26"/>
+  <rect x="111" y="132" width="290" height="225" rx="30" fill="url(#screen)" stroke="url(#frame)" stroke-width="12"/>
+  <g clip-path="url(#screenClip)">
+    <circle cx="337" cy="221" r="41" fill="url(#sun)"/>
+    <path d="M142 275h228v82H142z" fill="#142447" fill-opacity=".72"/>
+    <rect x="151" y="279" width="207" height="9" rx="4.5" fill="url(#spectrum)"/>
+    <rect x="151" y="298" width="154" height="8" rx="4" fill="url(#spectrum)" fill-opacity=".78"/>
+    <rect x="151" y="316" width="102" height="7" rx="3.5" fill="url(#spectrum)" fill-opacity=".56"/>
+  </g>
+  <path d="M240 359v46h32v-46" fill="url(#frame)"/>
+  <path d="M200 408c0-7 6-13 13-13h86c7 0 13 6 13 13v5H200v-5Z" fill="#F4F8FF"/>
+  <path d="M200 408c0-7 6-13 13-13h86c7 0 13 6 13 13" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="3"/>
+</svg>
