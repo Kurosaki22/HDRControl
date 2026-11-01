@@ -15,6 +15,9 @@ public sealed class AppWindowTests : IDisposable
     private const string MainWindowClass = "WinUIDesktopWin32WindowClass";
     private const string DialogClass = "#32770";
     private const int SwHide = 0;
+    private const byte VkControl = 0x11;
+    private const byte VkMenu = 0x12;
+    private const uint KeyEventKeyUp = 0x0002;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
     private readonly List<Process> _started = [];
@@ -118,6 +121,101 @@ public sealed class AppWindowTests : IDisposable
         scroll.SetScrollPercent(ScrollPattern.NoScroll, 0);
         WaitUntil(() => IsInside(list, firstRow), $"{first} did not scroll back into view.");
         Assert.Equal(0, scroll.Current.VerticalScrollPercent, 0.5);
+    }
+
+    [Fact]
+    public void Hotkey_AlreadyUsed_KeepsPreviousHotkey()
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(dummyDisplays: 3), MainWindowClass));
+        WaitForText(window, "Dummy Display 3");
+
+        PressCtrlAlt(window, row: 1, '2');
+
+        WaitForText(window, "Hotkey already in use");
+        Assert.Equal("Ctrl+Alt+1", HotkeyBoxes(window)[1].Value());
+    }
+
+    [Fact]
+    public void Hotkey_Free_IsAssigned()
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(dummyDisplays: 3), MainWindowClass));
+        WaitForText(window, "Dummy Display 3");
+
+        PressCtrlAlt(window, row: 1, '7');
+
+        WaitUntil(() => HotkeyBoxes(window)[1].Value() == "Ctrl+Alt+7", "The free hotkey was not assigned.");
+    }
+
+    [Fact]
+    public void ResetHotkeys_RestoresDefaults()
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(dummyDisplays: 3), MainWindowClass));
+        WaitForText(window, "Dummy Display 3");
+        PressCtrlAlt(window, row: 1, '7');
+        WaitUntil(() => HotkeyBoxes(window)[1].Value() == "Ctrl+Alt+7", "The free hotkey was not assigned.");
+
+        InvokeButton(window, "Settings");
+        InvokeButton(window, "Reset all hotkeys");
+        InvokeButton(window, "Reset hotkeys");
+        WaitForText(window, "Hotkeys reset");
+        InvokeButton(window, "Displays");
+
+        WaitUntil(() => HotkeyBoxes(window).Count == 4, "The hotkey fields did not come back.");
+        Assert.Equal(
+            ["Ctrl+Alt+0", "Ctrl+Alt+1", "Ctrl+Alt+2", "Ctrl+Alt+3"],
+            HotkeyBoxes(window).Select(box => box.Value()));
+    }
+
+    private static List<AutomationElement> HotkeyBoxes(AutomationElement window) =>
+        window.FindAll(
+                TreeScope.Descendants,
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit))
+            .Cast<AutomationElement>()
+            .ToList();
+
+    // Keystrokes go to whichever window is in front, so they must never be sent before the app is.
+    private static void BringToForeground(IntPtr window)
+    {
+        var foregroundThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+        var currentThread = GetCurrentThreadId();
+        AttachThreadInput(currentThread, foregroundThread, true);
+        SetForegroundWindow(window);
+        AttachThreadInput(currentThread, foregroundThread, false);
+        WaitUntil(() => GetForegroundWindow() == window, "The app window did not come to the foreground.");
+    }
+
+    private static void PressCtrlAlt(AutomationElement window, int row, char digit)
+    {
+        BringToForeground(new IntPtr(window.Current.NativeWindowHandle));
+        HotkeyBoxes(window)[row].SetFocus();
+        WaitUntil(() => HotkeyBoxes(window)[row].Current.HasKeyboardFocus, "The hotkey field did not get focus.");
+        byte[] keys = [VkControl, VkMenu, (byte)digit];
+        try
+        {
+            foreach (var key in keys)
+            {
+                keybd_event(key, 0, 0, UIntPtr.Zero);
+            }
+        }
+        finally
+        {
+            foreach (var key in keys.Reverse())
+            {
+                keybd_event(key, 0, KeyEventKeyUp, UIntPtr.Zero);
+            }
+        }
+    }
+
+    private static void InvokeButton(AutomationElement window, string name)
+    {
+        var condition = new AndCondition(
+            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
+            new PropertyCondition(AutomationElement.NameProperty, name));
+        AutomationElement? button = null;
+        WaitUntil(
+            () => (button = window.FindFirst(TreeScope.Descendants, condition)) is not null,
+            $"The button \"{name}\" did not appear.");
+        ((InvokePattern)button!.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
     }
 
     private Process Launch(int? dummyDisplays = null)
@@ -265,4 +363,27 @@ public sealed class AppWindowTests : IDisposable
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ShowWindow(IntPtr window, int command);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte key, byte scanCode, uint flags, UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr window);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint attachFrom, uint attachTo, [MarshalAs(UnmanagedType.Bool)] bool attach);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+}
+
+internal static class AutomationElementExtensions
+{
+    public static string Value(this AutomationElement element) =>
+        ((ValuePattern)element.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
 }

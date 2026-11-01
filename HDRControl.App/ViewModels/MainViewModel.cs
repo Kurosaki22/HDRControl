@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security;
 using System.Windows.Input;
@@ -18,6 +19,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
         new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
     private static readonly Brush DefaultNavigationForeground =
         new SolidColorBrush(Color.FromArgb(255, 51, 54, 58));
+    private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(3);
+    private static readonly Brush SuccessNotificationBrush =
+        new SolidColorBrush(Color.FromArgb(255, 36, 138, 90));
+    private static readonly Brush WarningNotificationBrush =
+        new SolidColorBrush(Color.FromArgb(255, 196, 120, 0));
+    private static readonly Brush ErrorNotificationBrush =
+        new SolidColorBrush(Color.FromArgb(255, 196, 43, 28));
+    private static readonly Brush InformationalNotificationBrush =
+        new SolidColorBrush(Color.FromArgb(255, 10, 132, 255));
     private readonly DisplayConfigService _displayConfigService;
     private readonly AppSettingsService _settingsService;
     private readonly AutoStartService _autoStartService;
@@ -25,6 +35,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private bool _isApplying;
     private bool _isSettingsVisible;
     private bool _isNotificationOpen;
+    private int _notificationVersion;
     private string _notificationTitle = string.Empty;
     private string _notificationMessage = string.Empty;
     private string _lastUpdatedText = "Detecting displays";
@@ -128,7 +139,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CurrentPageTitle => IsSettingsVisible ? "Settings" : "Displays";
 
     public string CurrentPageSubtitle => IsSettingsVisible
-        ? "Choose how HDR Control behaves when you close the window."
+        ? "Choose how HDR Control starts and closes."
         : "Choose which screens use high dynamic range.";
 
     public Brush DisplaysNavigationForeground =>
@@ -141,7 +152,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool CanSelectMonitors => !IsBusy;
 
     public string AllDisplaysHotkeyDisplayText => string.IsNullOrWhiteSpace(Settings.AllDisplaysHotkey)
-        ? "No shortcut"
+        ? "No hotkey"
         : Settings.AllDisplaysHotkey;
 
     public bool KeepInSystemTrayOnClose => Settings.KeepInSystemTrayOnClose;
@@ -188,8 +199,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool IsNotificationOpen
     {
         get => _isNotificationOpen;
-        private set => SetProperty(ref _isNotificationOpen, value);
+        private set
+        {
+            if (SetProperty(ref _isNotificationOpen, value))
+            {
+                OnPropertyChanged(nameof(NotificationVisibility));
+            }
+        }
     }
+
+    public Visibility NotificationVisibility => _isNotificationOpen ? Visibility.Visible : Visibility.Collapsed;
 
     public string NotificationTitle
     {
@@ -209,11 +228,37 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _lastUpdatedText, value);
     }
 
-    public InfoBarSeverity NotificationSeverity
+    private InfoBarSeverity NotificationSeverity
     {
         get => _notificationSeverity;
-        private set => SetProperty(ref _notificationSeverity, value);
+        set
+        {
+            if (SetProperty(ref _notificationSeverity, value))
+            {
+                OnPropertyChanged(nameof(NotificationGlyph));
+                OnPropertyChanged(nameof(NotificationIconBrush));
+            }
+        }
     }
+
+    public string NotificationGlyph => _notificationSeverity switch
+    {
+        InfoBarSeverity.Success => "",
+        InfoBarSeverity.Warning => "",
+        InfoBarSeverity.Error => "",
+        _ => ""
+    };
+
+    public Brush NotificationIconBrush => _notificationSeverity switch
+    {
+        InfoBarSeverity.Success => SuccessNotificationBrush,
+        InfoBarSeverity.Warning => WarningNotificationBrush,
+        InfoBarSeverity.Error => ErrorNotificationBrush,
+        _ => InformationalNotificationBrush
+    };
+
+    public string AppVersionLabel =>
+        $"Version {typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion}";
 
     public Task InitializeAsync() => RefreshAsync();
 
@@ -247,10 +292,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SettingsNavigationForeground));
     }
 
-    public void SetMonitorHotkey(MonitorViewModel monitor, string? shortcut)
+    public void SetMonitorHotkey(MonitorViewModel monitor, string? hotkey)
     {
-        var normalized = NormalizeShortcut(shortcut);
-        var oldShortcut = monitor.Hotkey;
+        var normalized = NormalizeHotkey(hotkey);
+        var oldHotkey = monitor.Hotkey;
         monitor.SetHotkey(normalized);
         if (normalized is null)
         {
@@ -263,22 +308,80 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
         if (!TrySaveSettings())
         {
-            monitor.SetHotkey(oldShortcut);
-            RestoreMonitorShortcut(monitor.Identity, oldShortcut);
+            monitor.SetHotkey(oldHotkey);
+            RestoreMonitorHotkey(monitor.Identity, oldHotkey);
             return;
         }
 
         HotkeyConfigurationChanged?.Invoke();
     }
 
-    public void SetAllDisplaysHotkey(string? shortcut)
+    // target is the row being edited, null for the all-displays row.
+    public string? FindHotkeyOwner(HotkeyGesture gesture, MonitorViewModel? target)
     {
-        var normalized = NormalizeShortcut(shortcut);
-        var oldShortcut = Settings.AllDisplaysHotkey;
+        if (target is not null && IsSameGesture(gesture, Settings.AllDisplaysHotkey))
+        {
+            return "All displays";
+        }
+
+        return Monitors
+            .FirstOrDefault(monitor => monitor != target && monitor.CanSelect && IsSameGesture(gesture, monitor.Hotkey))
+            ?.Name;
+    }
+
+    private static bool IsSameGesture(HotkeyGesture gesture, string? hotkey) =>
+        HotkeyGesture.TryParse(hotkey, out var other)
+        && other is not null
+        && other.Modifiers == gesture.Modifiers
+        && other.VirtualKey == gesture.VirtualKey;
+
+    public void ResetHotkeys()
+    {
+        var oldAllDisplays = Settings.AllDisplaysHotkey;
+        var oldMonitorHotkeys = new Dictionary<string, string?>(Settings.MonitorHotkeys, StringComparer.Ordinal);
+
+        Settings.AllDisplaysHotkey = AppSettings.DefaultAllDisplaysHotkey;
+        Settings.MonitorHotkeys.Clear();
+        var supportedDisplayIndex = 0;
+        foreach (var monitor in Monitors)
+        {
+            var hotkey = monitor.CanSelect && supportedDisplayIndex < 9 ? $"Ctrl+Alt+{++supportedDisplayIndex}" : null;
+            Settings.MonitorHotkeys[monitor.Identity] = hotkey;
+            monitor.SetHotkey(hotkey);
+        }
+
+        var saved = TrySaveSettings();
+        if (!saved)
+        {
+            Settings.AllDisplaysHotkey = oldAllDisplays;
+            Settings.MonitorHotkeys.Clear();
+            foreach (var (identity, hotkey) in oldMonitorHotkeys)
+            {
+                Settings.MonitorHotkeys[identity] = hotkey;
+            }
+
+            foreach (var monitor in Monitors)
+            {
+                monitor.SetHotkey(oldMonitorHotkeys.GetValueOrDefault(monitor.Identity));
+            }
+        }
+
+        OnPropertyChanged(nameof(AllDisplaysHotkeyDisplayText));
+        HotkeyConfigurationChanged?.Invoke();
+        if (saved)
+        {
+            ShowNotification(InfoBarSeverity.Success, "Hotkeys reset", "All hotkeys are back to their defaults.");
+        }
+    }
+
+    public void SetAllDisplaysHotkey(string? hotkey)
+    {
+        var normalized = NormalizeHotkey(hotkey);
+        var oldHotkey = Settings.AllDisplaysHotkey;
         Settings.AllDisplaysHotkey = normalized;
         if (!TrySaveSettings())
         {
-            Settings.AllDisplaysHotkey = oldShortcut;
+            Settings.AllDisplaysHotkey = oldHotkey;
             OnPropertyChanged(nameof(AllDisplaysHotkeyDisplayText));
             return;
         }
@@ -359,10 +462,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (warnings.Count > 0)
         {
             ReportWarning(
-                "Some shortcuts are unavailable",
+                "Some hotkeys are unavailable",
                 string.Join(Environment.NewLine, warnings));
         }
-        else if (NotificationTitle == "Some shortcuts are unavailable")
+        else if (NotificationTitle == "Some hotkeys are unavailable")
         {
             IsNotificationOpen = false;
         }
@@ -564,8 +667,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             ShowNotification(
                 InfoBarSeverity.Error,
-                "Could not save shortcuts",
-                "Display shortcuts are active for this session but could not be saved.");
+                "Could not save hotkeys",
+                "Display hotkeys are active for this session but could not be saved.");
         }
 
         NotifyDashboardChanged();
@@ -579,27 +682,27 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotifyDashboardChanged();
     }
 
-    private string? NormalizeShortcut(string? shortcut)
+    private string? NormalizeHotkey(string? hotkey)
     {
-        if (string.IsNullOrWhiteSpace(shortcut))
+        if (string.IsNullOrWhiteSpace(hotkey))
         {
             return null;
         }
 
-        return HotkeyGesture.TryParse(shortcut, out var gesture) && gesture is not null
+        return HotkeyGesture.TryParse(hotkey, out var gesture) && gesture is not null
             ? gesture.DisplayText
-            : throw new ArgumentException("Use a modifier and a supported key for a global shortcut.", nameof(shortcut));
+            : throw new ArgumentException("Use a modifier and a supported key for a global hotkey.", nameof(hotkey));
     }
 
-    private void RestoreMonitorShortcut(string identity, string? shortcut)
+    private void RestoreMonitorHotkey(string identity, string? hotkey)
     {
-        if (string.IsNullOrWhiteSpace(shortcut))
+        if (string.IsNullOrWhiteSpace(hotkey))
         {
             Settings.MonitorHotkeys.Remove(identity);
         }
         else
         {
-            Settings.MonitorHotkeys[identity] = shortcut;
+            Settings.MonitorHotkeys[identity] = hotkey;
         }
     }
 
@@ -627,6 +730,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotificationTitle = title;
         NotificationMessage = message;
         IsNotificationOpen = true;
+
+        var version = ++_notificationVersion;
+        if (severity == InfoBarSeverity.Success)
+        {
+            _ = CloseNotificationLaterAsync(version);
+        }
+    }
+
+    private async Task CloseNotificationLaterAsync(int version)
+    {
+        await Task.Delay(SuccessNotificationDuration);
+        if (version == _notificationVersion)
+        {
+            IsNotificationOpen = false;
+        }
     }
 
     private void NotifyDashboardChanged()

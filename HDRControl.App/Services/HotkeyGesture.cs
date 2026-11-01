@@ -11,10 +11,10 @@ public sealed record HotkeyGesture(uint VirtualKey, uint Modifiers, string Displ
     private const uint ModShift = 0x0004;
     private const uint ModWindows = 0x0008;
 
-    public static bool TryParse(string? shortcut, out HotkeyGesture? gesture)
+    public static bool TryParse(string? hotkey, out HotkeyGesture? gesture)
     {
         gesture = null;
-        if (string.IsNullOrWhiteSpace(shortcut))
+        if (string.IsNullOrWhiteSpace(hotkey))
         {
             return true;
         }
@@ -22,7 +22,7 @@ public sealed record HotkeyGesture(uint VirtualKey, uint Modifiers, string Displ
         uint modifiers = 0;
         uint virtualKey = 0;
         var keyFound = false;
-        foreach (var token in shortcut.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        foreach (var token in hotkey.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
             switch (token.ToLowerInvariant())
             {

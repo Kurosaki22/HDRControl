@@ -6,6 +6,8 @@
     <RootNamespace>HDRControl.App</RootNamespace>
     <AssemblyName>HDRControl</AssemblyName>
     <Product>HDR Control</Product>
+    <Version>1.1.2</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationIcon>Assets\HDRControl.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
