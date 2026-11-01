@@ -34,6 +34,11 @@ public sealed class AppSettingsService
 
     public void Save(AppSettings settings)
     {
+        if (DummyDisplays.IsActive)
+        {
+            return;
+        }
+
         Directory.CreateDirectory(_settingsDirectory);
 
         var temporaryPath = $"{SettingsPath}.tmp";

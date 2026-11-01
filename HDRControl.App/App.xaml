@@ -22,6 +22,8 @@
                     <SolidColorBrush x:Key="DashboardGlassBorderBrush" Color="#80FFFFFF" />
                     <SolidColorBrush x:Key="DashboardSuccessBrush" Color="#248A5A" />
                     <SolidColorBrush x:Key="DashboardSuccessSoftBrush" Color="#E5F4EB" />
+                    <SolidColorBrush x:Key="DashboardShortcutBrush" Color="#0F000000" />
+                    <SolidColorBrush x:Key="DashboardShortcutBorderBrush" Color="Transparent" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="DashboardBackgroundBrush" Color="{ThemeResource SystemColorWindowColor}" />
@@ -37,8 +39,22 @@
                     <SolidColorBrush x:Key="DashboardGlassBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                     <SolidColorBrush x:Key="DashboardSuccessBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                     <SolidColorBrush x:Key="DashboardSuccessSoftBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="DashboardShortcutBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="DashboardShortcutBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+            <Style x:Key="ShortcutBoxStyle" TargetType="TextBox">
+                <Setter Property="Width" Value="118" />
+                <Setter Property="MinHeight" Value="0" />
+                <!-- The TextBox template ignores VerticalContentAlignment and sets text high, so the top padding centers it. -->
+                <Setter Property="Padding" Value="8,7,8,1" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="TextAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Background" Value="{ThemeResource DashboardShortcutBrush}" />
+                <Setter Property="BorderBrush" Value="{ThemeResource DashboardShortcutBorderBrush}" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

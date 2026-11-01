@@ -59,7 +59,21 @@ public sealed partial class MainWindow : Window
         RegisterGlobalHotkeys();
     }
 
-    private async void RootGrid_Loaded(object sender, RoutedEventArgs args)
+    public void Launch(bool isAutoStart)
+    {
+        if (isAutoStart && ViewModel.StartMinimizedToTray && _trayAvailable)
+        {
+            // Loaded does not fire until the window is activated, but the shortcuts must work from the tray.
+            InitializeViewModel();
+            return;
+        }
+
+        Activate();
+    }
+
+    private void RootGrid_Loaded(object sender, RoutedEventArgs args) => InitializeViewModel();
+
+    private async void InitializeViewModel()
     {
         if (_hasInitialized)
         {
@@ -95,6 +109,14 @@ public sealed partial class MainWindow : Window
         if (sender is CheckBox option)
         {
             ViewModel.SetStartWithWindows(option.IsChecked == true);
+        }
+    }
+
+    private void StartMinimizedOption_Changed(object sender, RoutedEventArgs args)
+    {
+        if (sender is CheckBox option)
+        {
+            ViewModel.SetStartMinimizedToTray(option.IsChecked == true);
         }
     }
 
@@ -202,6 +224,11 @@ public sealed partial class MainWindow : Window
 
     private void ShowFromTray()
     {
+        if (AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+        {
+            presenter.Restore();
+        }
+
         AppWindow.Show();
         Activate();
     }

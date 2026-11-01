@@ -150,6 +150,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public bool CanConfigureAutoStart => _canConfigureAutoStart;
 
+    public bool StartMinimizedToTray => Settings.StartMinimizedToTray;
+
+    public bool CanConfigureStartMinimized => _canConfigureAutoStart && _startWithWindows;
+
     public bool IsRefreshing
     {
         get => _isRefreshing;
@@ -311,12 +315,43 @@ public sealed class MainViewModel : INotifyPropertyChanged
             _autoStartService.SetEnabled(enabled);
             _startWithWindows = enabled;
             OnPropertyChanged(nameof(StartWithWindows));
+            OnPropertyChanged(nameof(CanConfigureStartMinimized));
         }
         catch (Exception error) when (
             error is IOException or UnauthorizedAccessException or SecurityException or InvalidOperationException)
         {
             ReportError("Could not update startup setting", error.Message);
         }
+    }
+
+    public void SetStartMinimizedToTray(bool enabled)
+    {
+        if (Settings.StartMinimizedToTray == enabled)
+        {
+            return;
+        }
+
+        try
+        {
+            // Startup entries written by older versions lack the argument that marks an automatic start.
+            if (enabled && _startWithWindows)
+            {
+                _autoStartService.SetEnabled(true);
+            }
+
+            Settings.StartMinimizedToTray = enabled;
+            if (!TrySaveSettings())
+            {
+                Settings.StartMinimizedToTray = !enabled;
+            }
+        }
+        catch (Exception error) when (
+            error is IOException or UnauthorizedAccessException or SecurityException or InvalidOperationException)
+        {
+            ReportError("Could not update startup setting", error.Message);
+        }
+
+        OnPropertyChanged(nameof(StartMinimizedToTray));
     }
 
     public void ShowHotkeyRegistrationWarnings(IReadOnlyList<string> warnings)

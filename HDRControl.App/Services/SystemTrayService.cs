@@ -18,6 +18,9 @@ public sealed class SystemTrayService : IDisposable
     private const uint TrackPopupMenuReturnCommand = 0x0100;
     private const uint MenuOpen = 1;
     private const uint MenuQuit = 2;
+    private const uint AllowAnyProcess = 0xFFFFFFFF;
+    private static readonly IntPtr BroadcastWindow = new(0xFFFF);
+    private static readonly uint ShowWindowMessage = RegisterWindowMessageW("HDRControl.ShowWindow");
     private readonly IntPtr _windowHandle;
     private readonly IntPtr _applicationIcon;
     private readonly SubclassProc _subclassProc;
@@ -37,6 +40,16 @@ public sealed class SystemTrayService : IDisposable
 
     public event Action? OpenRequested;
     public event Action? QuitRequested;
+
+    public static void RequestShowRunningInstance()
+    {
+        // Only the process the user just launched may hand over the right to take the foreground.
+        AllowSetForegroundWindow(AllowAnyProcess);
+        if (!PostMessageW(BroadcastWindow, ShowWindowMessage, IntPtr.Zero, IntPtr.Zero))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "The running HDR Control window could not be opened.");
+        }
+    }
 
     public void SetVisible(bool visible)
     {
@@ -87,7 +100,11 @@ public sealed class SystemTrayService : IDisposable
         UIntPtr subclassId,
         IntPtr referenceData)
     {
-        if (message == TrayCallbackMessage)
+        if (message == ShowWindowMessage)
+        {
+            OpenRequested?.Invoke();
+        }
+        else if (message == TrayCallbackMessage)
         {
             var notification = unchecked((uint)lParam.ToInt64());
             if (notification == WmLeftButtonUp)
@@ -261,4 +278,11 @@ public sealed class SystemTrayService : IDisposable
     [DllImport("user32.dll", ExactSpelling = true, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool PostMessageW(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, SetLastError = true)]
+    private static extern uint RegisterWindowMessageW(string name);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllowSetForegroundWindow(uint processId);
 }

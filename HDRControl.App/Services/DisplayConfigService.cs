@@ -27,6 +27,11 @@ public sealed class DisplayConfigService
 
     public IReadOnlyList<MonitorInfo> QueryAllDisplays()
     {
+        if (DummyDisplays.IsActive)
+        {
+            return DummyDisplays.Create();
+        }
+
         var paths = QueryActivePaths();
         var displays = new List<MonitorInfo>(paths.Length);
         var seenTargets = new HashSet<string>(StringComparer.Ordinal);
@@ -94,6 +99,11 @@ public sealed class DisplayConfigService
 
     public void SetHdrEnabled(MonitorInfo monitor, bool enabled)
     {
+        if (DummyDisplays.IsActive)
+        {
+            return;
+        }
+
         if (monitor.Status is not (HdrStatus.Enabled or HdrStatus.Disabled))
         {
             throw new InvalidOperationException(

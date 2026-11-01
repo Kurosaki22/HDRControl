@@ -22,18 +22,18 @@ public sealed class HdrPillToggle : UserControl
     {
         _thumb = new Border
         {
-            Width = 21,
-            Height = 21,
-            CornerRadius = new CornerRadius(11),
+            Width = 16,
+            Height = 16,
+            CornerRadius = new CornerRadius(8),
             Background = new SolidColorBrush(Colors.White),
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(3)
+            Margin = new Thickness(2)
         };
         _track = new Border
         {
-            Width = 48,
-            Height = 27,
-            CornerRadius = new CornerRadius(14),
+            Width = 36,
+            Height = 20,
+            CornerRadius = new CornerRadius(10),
             Child = _thumb
         };
 
