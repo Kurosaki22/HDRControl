@@ -24,7 +24,7 @@ public sealed class GlobalHotkeyService : IDisposable
         _subclassProc = WindowProc;
         if (!SetWindowSubclass(_windowHandle, _subclassProc, SubclassId, IntPtr.Zero))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "Global keyboard shortcuts could not be initialized.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Global keyboard hotkeys could not be initialized.");
         }
     }
 
@@ -32,7 +32,7 @@ public sealed class GlobalHotkeyService : IDisposable
 
     public IReadOnlyList<string> UpdateRegistrations(
         IReadOnlyList<MonitorViewModel> monitors,
-        string? allDisplaysShortcut)
+        string? allDisplaysHotkey)
     {
         foreach (var id in _registeredHotkeys.Keys.ToArray())
         {
@@ -41,7 +41,7 @@ public sealed class GlobalHotkeyService : IDisposable
 
         _registeredHotkeys.Clear();
         var warnings = new List<string>();
-        var shortcutsInUse = new HashSet<(uint Modifiers, uint VirtualKey)>();
+        var hotkeysInUse = new HashSet<(uint Modifiers, uint VirtualKey)>();
 
         foreach (var monitor in monitors)
         {
@@ -50,12 +50,12 @@ public sealed class GlobalHotkeyService : IDisposable
                 continue;
             }
 
-            var shortcut = monitor.Hotkey;
+            var hotkey = monitor.Hotkey;
             if (!TryRegister(
-                    shortcut,
+                    hotkey,
                     monitor.Identity,
                     GetMonitorHotkeyId(monitor.Identity),
-                    shortcutsInUse,
+                    hotkeysInUse,
                     warnings))
             {
                 continue;
@@ -63,10 +63,10 @@ public sealed class GlobalHotkeyService : IDisposable
         }
 
         TryRegister(
-            allDisplaysShortcut,
+            allDisplaysHotkey,
             AllDisplaysHotkeyTarget,
             AllDisplaysHotkeyId,
-            shortcutsInUse,
+            hotkeysInUse,
             warnings);
         return warnings;
     }
@@ -91,24 +91,24 @@ public sealed class GlobalHotkeyService : IDisposable
     public const string AllDisplaysHotkeyTarget = "\0all-displays";
 
     private bool TryRegister(
-        string? shortcut,
+        string? hotkey,
         string target,
         int id,
-        HashSet<(uint Modifiers, uint VirtualKey)> shortcutsInUse,
+        HashSet<(uint Modifiers, uint VirtualKey)> hotkeysInUse,
         List<string> warnings)
     {
-        if (string.IsNullOrWhiteSpace(shortcut))
+        if (string.IsNullOrWhiteSpace(hotkey))
         {
             return true;
         }
 
-        if (!HotkeyGesture.TryParse(shortcut, out var gesture) || gesture is null)
+        if (!HotkeyGesture.TryParse(hotkey, out var gesture) || gesture is null)
         {
-            warnings.Add($"“{shortcut}” is not a valid global shortcut.");
+            warnings.Add($"“{hotkey}” is not a valid global hotkey.");
             return false;
         }
 
-        if (!shortcutsInUse.Add((gesture.Modifiers, gesture.VirtualKey)))
+        if (!hotkeysInUse.Add((gesture.Modifiers, gesture.VirtualKey)))
         {
             warnings.Add($"{gesture.DisplayText} is assigned more than once.");
             return false;

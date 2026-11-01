@@ -17,7 +17,7 @@ the Windows DisplayConfig APIs, without a separate CLI.
   all HDR-capable displays with the All displays switch.
 - Refresh the display list and status on demand.
 - Unsupported displays remain visible, but their switches are disabled.
-- Assign system-wide shortcuts to individual displays and all displays. The
+- Assign system-wide hotkeys to individual displays and all displays. The
   defaults are `Ctrl+Alt+1`, `Ctrl+Alt+2`, and so on, with `Ctrl+Alt+0` for all.
 - Choose whether closing the window sends the app directly to the system tray
   or asks what to do.
@@ -26,15 +26,17 @@ the Windows DisplayConfig APIs, without a separate CLI.
 - Starting the app again brings the running instance to the front.
 - A fixed-size, light macOS System Settings-inspired sidebar with translucent
   acrylic surfaces and compact display rows.
-- Set each display's shortcut and the all-displays shortcut on the Displays
+- Set each display's hotkey and the all-displays hotkey on the Displays
   page; Settings contains the system-tray preference.
 - Publish a self-contained, single-file Windows executable.
 - A custom HDR Control icon is embedded in the app and system tray.
 
-Shortcut assignments are saved under `%LocalAppData%\HDRControl\settings.json`.
-Set a monitor shortcut or the all-displays shortcut on the Displays page by
+Hotkey assignments are saved under `%LocalAppData%\HDRControl\settings.json`.
+Set a monitor hotkey or the all-displays hotkey on the Displays page by
 clicking its field and pressing a modifier plus a key. Press Backspace to clear
-a shortcut. If at least one supported display has HDR off, the all-displays
+a hotkey. A hotkey that is already used by another display is rejected
+and the previous one stays. “Reset hotkeys” in Settings restores the defaults.
+If at least one supported display has HDR off, the all-displays
 action turns HDR on for every supported display; otherwise it turns HDR off.
 
 Enable “Keep in the system tray” in Settings to hide the window directly on

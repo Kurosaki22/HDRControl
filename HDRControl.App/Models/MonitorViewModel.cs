@@ -53,7 +53,7 @@ public sealed class MonitorViewModel : INotifyPropertyChanged
     }
 
     public string HotkeyDisplayText => string.IsNullOrWhiteSpace(Hotkey)
-        ? "No shortcut"
+        ? "No hotkey"
         : Hotkey;
 
     public void SetHotkey(string? hotkey) => Hotkey = hotkey ?? string.Empty;

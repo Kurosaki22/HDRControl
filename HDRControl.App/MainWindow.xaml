@@ -120,6 +120,10 @@
                         Text="{x:Bind ViewModel.LastUpdatedText, Mode=OneWay}"
                         FontSize="10"
                         Foreground="{ThemeResource DashboardMutedBrush}" />
+                    <TextBlock
+                        Text="{x:Bind ViewModel.AppVersionLabel}"
+                        FontSize="10"
+                        Foreground="{ThemeResource DashboardMutedBrush}" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -155,18 +159,8 @@
                 </Button>
             </Grid>
 
-            <Grid Grid.Row="1" RowDefinitions="Auto,*">
-                <InfoBar
-                    Grid.Row="0"
-                    IsOpen="{x:Bind ViewModel.IsNotificationOpen, Mode=OneWay}"
-                    Severity="{x:Bind ViewModel.NotificationSeverity, Mode=OneWay}"
-                    Title="{x:Bind ViewModel.NotificationTitle, Mode=OneWay}"
-                    Message="{x:Bind ViewModel.NotificationMessage, Mode=OneWay}"
-                    IsClosable="True"
-                    Closed="Notification_Closed"
-                    Margin="0,0,0,7" />
-
-                <Grid Grid.Row="1">
+            <Grid Grid.Row="1">
+                <Grid>
                     <Grid
                         Visibility="{x:Bind ViewModel.DisplaysPageVisibility, Mode=OneWay}"
                         RowDefinitions="Auto,Auto,*">
@@ -218,10 +212,10 @@
                                 </StackPanel>
                                 <TextBox
                                     Grid.Column="2"
-                                    Style="{StaticResource ShortcutBoxStyle}"
+                                    Style="{StaticResource HotkeyBoxStyle}"
                                     IsReadOnly="True"
                                     Text="{x:Bind ViewModel.AllDisplaysHotkeyDisplayText, Mode=OneWay}"
-                                    PlaceholderText="Set shortcut"
+                                    PlaceholderText="Set hotkey"
                                     Tag="all-displays"
                                     GotFocus="HotkeyTextBox_GotFocus"
                                     LostFocus="HotkeyTextBox_LostFocus"
@@ -280,11 +274,11 @@
                                                     </StackPanel>
                                                     <TextBox
                                                         Grid.Column="2"
-                                                        Style="{StaticResource ShortcutBoxStyle}"
+                                                        Style="{StaticResource HotkeyBoxStyle}"
                                                         IsReadOnly="True"
                                                         IsEnabled="{Binding CanSelect}"
                                                         Text="{Binding HotkeyDisplayText, Mode=OneWay}"
-                                                        PlaceholderText="Set shortcut"
+                                                        PlaceholderText="Set hotkey"
                                                         GotFocus="HotkeyTextBox_GotFocus"
                                                         LostFocus="HotkeyTextBox_LostFocus"
                                                         KeyDown="HotkeyTextBox_KeyDown"
@@ -360,7 +354,7 @@
                                             FontWeight="SemiBold"
                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                                         <TextBlock
-                                            Text="When enabled, closing the window sends the app directly to the tray."
+                                            Text="Closing the window sends the app to the tray."
                                             FontSize="12"
                                             TextWrapping="Wrap"
                                             Foreground="{ThemeResource DashboardMutedBrush}" />
@@ -390,7 +384,7 @@
                                             FontWeight="SemiBold"
                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                                         <TextBlock
-                                            Text="Launch HDR Control automatically when you sign in to Windows."
+                                            Text="Launch HDR Control when you sign in to Windows."
                                             FontSize="12"
                                             TextWrapping="Wrap"
                                             Foreground="{ThemeResource DashboardMutedBrush}" />
@@ -421,7 +415,7 @@
                                             FontWeight="SemiBold"
                                             Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                                         <TextBlock
-                                            Text="When Windows starts HDR Control automatically, keep the window hidden."
+                                            Text="Stay hidden when Windows starts the app."
                                             FontSize="12"
                                             TextWrapping="Wrap"
                                             Foreground="{ThemeResource DashboardMutedBrush}" />
@@ -437,11 +431,93 @@
                                         AutomationProperties.Name="Start minimized in the system tray when Windows starts HDR Control" />
                                 </Grid>
                             </Border>
+
+                            <Border
+                                Padding="14,8"
+                                CornerRadius="12"
+                                Background="{ThemeResource DashboardCardBrush}"
+                                BorderBrush="{ThemeResource DashboardGlassBorderBrush}"
+                                BorderThickness="1">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="15">
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock
+                                            Text="Reset hotkeys"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock
+                                            Text="Restore the default hotkey for every display."
+                                            FontSize="12"
+                                            TextWrapping="Wrap"
+                                            Foreground="{ThemeResource DashboardMutedBrush}" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        Content="Reset"
+                                        Click="ResetHotkeys_Click"
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="Reset all hotkeys" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
             </Grid>
+
+            <Border
+                Grid.Row="0"
+                Grid.RowSpan="2"
+                Visibility="{x:Bind ViewModel.NotificationVisibility, Mode=OneWay}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                MaxWidth="420"
+                Margin="0,0,0,12"
+                Padding="14,10,8,10"
+                CornerRadius="12"
+                Background="{ThemeResource DashboardToastBrush}"
+                BorderBrush="{ThemeResource DashboardCardBorderBrush}"
+                BorderThickness="1"
+                Translation="0,0,24"
+                AutomationProperties.LiveSetting="Polite">
+                <Border.Shadow>
+                    <ThemeShadow />
+                </Border.Shadow>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                    <FontIcon
+                        Glyph="{x:Bind ViewModel.NotificationGlyph, Mode=OneWay}"
+                        FontSize="16"
+                        Foreground="{x:Bind ViewModel.NotificationIconBrush, Mode=OneWay}"
+                        VerticalAlignment="Top"
+                        Margin="0,2,0,0" />
+                    <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{x:Bind ViewModel.NotificationTitle, Mode=OneWay}"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                        <TextBlock
+                            Text="{x:Bind ViewModel.NotificationMessage, Mode=OneWay}"
+                            FontSize="12"
+                            TextWrapping="Wrap"
+                            Foreground="{ThemeResource DashboardMutedBrush}" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="2"
+                        Click="NotificationClose_Click"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6"
+                        MinWidth="0"
+                        MinHeight="0"
+                        VerticalAlignment="Top"
+                        ToolTipService.ToolTip="Dismiss"
+                        AutomationProperties.Name="Dismiss notification">
+                        <FontIcon Glyph="&#xE711;" FontSize="10" />
+                    </Button>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Window>

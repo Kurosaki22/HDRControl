@@ -20,7 +20,7 @@ public sealed partial class MainWindow : Window
     private readonly AppIconService _appIconService;
     private bool _isExitRequested;
     private bool _hasInitialized;
-    private bool _isCapturingShortcut;
+    private bool _isCapturingHotkey;
     private bool _isClosePromptOpen;
     private bool _trayAvailable;
 
@@ -63,7 +63,7 @@ public sealed partial class MainWindow : Window
     {
         if (isAutoStart && ViewModel.StartMinimizedToTray && _trayAvailable)
         {
-            // Loaded does not fire until the window is activated, but the shortcuts must work from the tray.
+            // Loaded does not fire until the window is activated, but the hotkeys must work from the tray.
             InitializeViewModel();
             return;
         }
@@ -84,7 +84,7 @@ public sealed partial class MainWindow : Window
         await ViewModel.InitializeAsync();
     }
 
-    private void Notification_Closed(InfoBar sender, InfoBarClosedEventArgs args) =>
+    private void NotificationClose_Click(object sender, RoutedEventArgs args) =>
         ViewModel.DismissNotification();
 
     private void SettingsButton_Click(object sender, RoutedEventArgs args) =>
@@ -117,6 +117,32 @@ public sealed partial class MainWindow : Window
         if (sender is CheckBox option)
         {
             ViewModel.SetStartMinimizedToTray(option.IsChecked == true);
+        }
+    }
+
+    private async void ResetHotkeys_Click(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            var dialog = new ContentDialog
+            {
+                XamlRoot = RootGrid.XamlRoot,
+                Title = "Reset all hotkeys?",
+                Content = "Every display goes back to its default hotkey. Hotkeys you set yourself are removed.",
+                PrimaryButtonText = "Reset hotkeys",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                RequestedTheme = ElementTheme.Light
+            };
+
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            {
+                ViewModel.ResetHotkeys();
+            }
+        }
+        catch (Exception error) when (error is InvalidOperationException or COMException)
+        {
+            ViewModel.ReportError("Could not reset hotkeys", error.Message);
         }
     }
 
@@ -154,7 +180,7 @@ public sealed partial class MainWindow : Window
 
         if (args.Key is VirtualKey.Back or VirtualKey.Delete)
         {
-            SetShortcut(textBox, null);
+            SetHotkey(textBox, null);
             return;
         }
 
@@ -162,41 +188,55 @@ public sealed partial class MainWindow : Window
         if (gesture is null)
         {
             ViewModel.ReportWarning(
-                "Shortcut not recorded",
-                "Use Ctrl, Alt, or Win together with a supported key. Backspace clears a shortcut.");
+                "Hotkey not recorded",
+                "Use Ctrl, Alt, or Win together with a supported key. Backspace clears a hotkey.");
             return;
         }
 
-        SetShortcut(textBox, gesture.DisplayText);
+        var target = IsAllDisplaysHotkey(textBox) ? null : textBox.DataContext as MonitorViewModel;
+        // Hotkeys held by other apps never get here: Windows hands those keys to their owner.
+        var owner = ViewModel.FindHotkeyOwner(gesture, target);
+        if (owner is not null)
+        {
+            ViewModel.ReportWarning(
+                "Hotkey already in use",
+                $"{gesture.DisplayText} is already used by {owner}.");
+            return;
+        }
+
+        SetHotkey(textBox, gesture.DisplayText);
     }
+
+    private static bool IsAllDisplaysHotkey(TextBox textBox) =>
+        string.Equals(textBox.Tag as string, "all-displays", StringComparison.Ordinal);
 
     private void HotkeyTextBox_GotFocus(object sender, RoutedEventArgs args)
     {
-        _isCapturingShortcut = true;
+        _isCapturingHotkey = true;
         _hotkeyService.UpdateRegistrations([], null);
     }
 
     private void HotkeyTextBox_LostFocus(object sender, RoutedEventArgs args)
     {
-        _isCapturingShortcut = false;
+        _isCapturingHotkey = false;
         RegisterGlobalHotkeys();
     }
 
-    private void SetShortcut(TextBox textBox, string? shortcut)
+    private void SetHotkey(TextBox textBox, string? hotkey)
     {
-        if (string.Equals(textBox.Tag as string, "all-displays", StringComparison.Ordinal))
+        if (IsAllDisplaysHotkey(textBox))
         {
-            ViewModel.SetAllDisplaysHotkey(shortcut);
+            ViewModel.SetAllDisplaysHotkey(hotkey);
         }
         else if (textBox.DataContext is MonitorViewModel monitor)
         {
-            ViewModel.SetMonitorHotkey(monitor, shortcut);
+            ViewModel.SetMonitorHotkey(monitor, hotkey);
         }
     }
 
     private void RegisterGlobalHotkeys()
     {
-        if (_isCapturingShortcut)
+        if (_isCapturingHotkey)
         {
             return;
         }
