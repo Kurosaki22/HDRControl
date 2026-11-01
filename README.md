@@ -21,7 +21,9 @@ the Windows DisplayConfig APIs, without a separate CLI.
   defaults are `Ctrl+Alt+1`, `Ctrl+Alt+2`, and so on, with `Ctrl+Alt+0` for all.
 - Choose whether closing the window sends the app directly to the system tray
   or asks what to do.
-- Choose whether HDR Control starts automatically when you sign in to Windows.
+- Choose whether HDR Control starts automatically when you sign in to Windows,
+  and whether that automatic start stays minimized in the system tray.
+- Starting the app again brings the running instance to the front.
 - A fixed-size, light macOS System Settings-inspired sidebar with translucent
   acrylic surfaces and compact display rows.
 - Set each display's shortcut and the all-displays shortcut on the Displays
@@ -39,7 +41,9 @@ Enable “Keep in the system tray” in Settings to hide the window directly on
 close without a prompt. When disabled, closing the window asks whether to quit,
 stay open, or move to the system tray. Use the tray icon's context menu to
 reopen the app or quit it. Enable “Start with Windows” in Settings to register
-the current executable for startup for your Windows user.
+the current executable for startup for your Windows user. Enable “Start
+minimized in the system tray” to keep the window hidden on that automatic start;
+starting the app yourself always shows the window.
 
 ## Publish a single executable
 

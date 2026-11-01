@@ -4,6 +4,7 @@ namespace HDRControl.App.Services;
 
 public sealed class AutoStartService
 {
+    public const string StartupArgument = "--autostart";
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AppValueName = "HDRControl";
     private const string LegacyAppValueName = "HdrSwitcher";
@@ -29,7 +30,7 @@ public sealed class AutoStartService
 
         var executablePath = Environment.ProcessPath
             ?? throw new InvalidOperationException("The application executable path is unavailable.");
-        runKey.SetValue(AppValueName, $"\"{executablePath}\"", RegistryValueKind.String);
+        runKey.SetValue(AppValueName, $"\"{executablePath}\" {StartupArgument}", RegistryValueKind.String);
         runKey.DeleteValue(LegacyAppValueName, throwOnMissingValue: false);
     }
 }

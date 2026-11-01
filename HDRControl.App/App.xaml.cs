@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using HDRControl.App.Services;
 using Microsoft.UI.Xaml;
 
 namespace HDRControl.App;
@@ -6,8 +7,7 @@ namespace HDRControl.App;
 public partial class App : Application
 {
     private const uint MessageBoxError = 0x00000010;
-    private const uint MessageBoxInformation = 0x00000040;
-    private Window? _window;
+    private MainWindow? _window;
     // Held in a field so the mutex stays alive until the process exits.
     private Mutex? _singleInstanceMutex;
 
@@ -32,20 +32,21 @@ public partial class App : Application
     {
         try
         {
+            var isAutoStart = Environment.GetCommandLineArgs().Contains(AutoStartService.StartupArgument);
             _singleInstanceMutex = new Mutex(true, "HDRControl.SingleInstance", out var isFirstInstance);
             if (!isFirstInstance)
             {
-                MessageBoxW(
-                    IntPtr.Zero,
-                    "HDR Control is already running. You can open it from the system tray.",
-                    "HDR Control",
-                    MessageBoxInformation);
+                if (!isAutoStart)
+                {
+                    SystemTrayService.RequestShowRunningInstance();
+                }
+
                 Exit();
                 return;
             }
 
             _window = new MainWindow();
-            _window.Activate();
+            _window.Launch(isAutoStart);
         }
         catch (Exception error)
         {
