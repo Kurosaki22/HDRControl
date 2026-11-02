@@ -9,6 +9,7 @@ the Windows DisplayConfig APIs, without a separate CLI.
 | Displays | Settings |
 |:--:|:--:|
 | ![HDR Control Displays page](screenshots/displays.png) | ![HDR Control Settings page](screenshots/settings.png) |
+| ![HDR Control Displays page in dark mode](screenshots/displays-dark.png) | ![HDR Control Settings page in dark mode](screenshots/settings-dark.png) |
 
 ## Features
 
