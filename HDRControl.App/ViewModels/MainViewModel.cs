@@ -273,6 +273,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
                 "Settings were reset",
                 $"The settings file could not be read and was saved as {backupPath}.");
         }
+        else if (_settingsService.ReadError is { } readError)
+        {
+            ReportWarning(
+                "Settings could not be read",
+                $"Default settings are used and changes are not saved until the next start. {readError}");
+        }
     }
 
     public void DismissNotification() => IsNotificationOpen = false;

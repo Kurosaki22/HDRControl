@@ -377,6 +377,41 @@ public sealed class AppWindowTests : IDisposable
     }
 
     [Fact]
+    public void LockedSettingsFile_StartsWithDefaultsAndIsNotOverwritten()
+    {
+        var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_settingsDirectory);
+        var settingsPath = Path.Combine(_settingsDirectory, "settings.json");
+        const string savedSettings = """{ "UseDarkMode": true }""";
+        File.WriteAllText(settingsPath, savedSettings);
+        try
+        {
+            AutomationElement window;
+            // Held like a virus scanner would, for longer than the app retries.
+            using (new FileStream(settingsPath, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                window = AutomationElement.FromHandle(WaitForWindow(
+                    Launch(dummyDisplays: 1, new Dictionary<string, string> { ["HDRCONTROL_LOG_DIRECTORY"] = logDirectory }),
+                    MainWindowClass));
+                WaitForText(window, "Settings could not be read");
+            }
+
+            InvokeButton(window, "Settings");
+            InvokeButton(window, "Switch to dark mode");
+            WaitForButton(window, "Switch to light mode");
+
+            Assert.Equal(savedSettings, File.ReadAllText(settingsPath));
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                Directory.Delete(logDirectory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void BrokenSettingsFile_IsBackedUpAndAppStartsWithDefaults()
     {
         var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
