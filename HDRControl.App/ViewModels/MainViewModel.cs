@@ -755,6 +755,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         for (var index = 0; index < displays.Count; index++)
         {
             var display = displays[index];
+            settingsChanged |= MigrateLegacyHotkey(display);
             // New displays, and returning ones whose hotkey was given away, get a free default hotkey.
             if (!Settings.MonitorHotkeys.ContainsKey(display.Identity))
             {
@@ -784,6 +785,37 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotifyDashboardChanged();
         HotkeyConfigurationChanged?.Invoke();
         return null;
+    }
+
+    // Older versions keyed displays by adapter LUID, which Windows reassigns on every restart, so one display
+    // piled up an entry per boot. Its newest hotkey moves to the stable identity and the old entries go.
+    // shortcut: two displays with the same target id on different adapters can't be told apart here; the
+    // first one takes the old hotkey and the second gets a default one.
+    private bool MigrateLegacyHotkey(MonitorInfo display)
+    {
+        if (display.Identity == display.LegacyIdentity || Settings.MonitorHotkeys.ContainsKey(display.Identity))
+        {
+            return false;
+        }
+
+        var suffix = $":{display.TargetId:X8}";
+        var legacyKeys = Settings.MonitorHotkeys.Keys
+            .Where(key => key.Length == display.LegacyIdentity.Length && key.EndsWith(suffix, StringComparison.Ordinal))
+            .ToList();
+        if (legacyKeys.Count == 0)
+        {
+            return false;
+        }
+
+        var source = legacyKeys.Contains(display.LegacyIdentity) ? display.LegacyIdentity : legacyKeys[^1];
+        var hotkey = Settings.MonitorHotkeys[source];
+        foreach (var key in legacyKeys)
+        {
+            Settings.MonitorHotkeys.Remove(key);
+        }
+
+        Settings.MonitorHotkeys[display.Identity] = hotkey;
+        return true;
     }
 
     private void ClearMonitors()

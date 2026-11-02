@@ -19,6 +19,7 @@ public sealed partial class MainWindow : Window
     private readonly SystemTrayService _trayService;
     private readonly AppIconService _appIconService;
     private const int WmDisplayChange = 0x007E;
+    private static readonly TimeSpan HotkeyWaitLimit = TimeSpan.FromSeconds(10);
     private readonly IntPtr _windowHandle;
     private readonly HwndSource _windowSource;
     private readonly DispatcherTimer _displayChangeTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -278,6 +279,18 @@ public sealed partial class MainWindow : Window
         _hotkeysInProgress++;
         try
         {
+            // A press during a running change would be dropped; wait for it so quick presses run in turn.
+            var waitedSince = DateTime.UtcNow;
+            while (ViewModel.IsBusy)
+            {
+                if (DateTime.UtcNow - waitedSince > HotkeyWaitLimit)
+                {
+                    return;
+                }
+
+                await Task.Delay(100);
+            }
+
             await (target == GlobalHotkeyService.AllDisplaysHotkeyTarget
                 ? ViewModel.ToggleAllDisplaysHdrAsync()
                 : ViewModel.ToggleMonitorHdrAsync(target));

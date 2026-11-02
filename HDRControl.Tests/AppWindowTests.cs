@@ -330,6 +330,53 @@ public sealed class AppWindowTests : IDisposable
     }
 
     [Fact]
+    public void Crash_RotatesLargeExceptionLog()
+    {
+        var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(logDirectory);
+        var logPath = Path.Combine(logDirectory, "ExceptionLog.txt");
+        var oldLog = new string('x', 1100 * 1024);
+        File.WriteAllText(logPath, oldLog);
+        var message = $"Test crash {Guid.NewGuid():N}";
+        try
+        {
+            var app = Launch(dummyDisplays: 1, new Dictionary<string, string>
+            {
+                ["HDRCONTROL_LOG_DIRECTORY"] = logDirectory,
+                ["HDRCONTROL_TEST_CRASH"] = message
+            });
+
+            Assert.True(app.WaitForExit(Timeout), "The app did not crash.");
+            Assert.Equal(oldLog, File.ReadAllText(Path.Combine(logDirectory, "ExceptionLog.old.txt")));
+            var log = File.ReadAllText(logPath);
+            Assert.Contains(message, log);
+            Assert.DoesNotContain("xxx", log);
+        }
+        finally
+        {
+            Directory.Delete(logDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LegacyDisplayKeys_AreMovedToDevicePath()
+    {
+        Directory.CreateDirectory(_settingsDirectory);
+        var settingsPath = Path.Combine(_settingsDirectory, "settings.json");
+        // One display saved under two adapter LUIDs, as older versions did after a restart.
+        File.WriteAllText(settingsPath, """
+            { "MonitorHotkeys": { "00000000:0000ABCD:D0000002": "Ctrl+F3", "00000000:0000BEEF:D0000002": "Ctrl+F3" } }
+            """);
+
+        var window = LaunchWithDisplays(2);
+
+        Assert.Equal("Ctrl+F3", HotkeyBoxes(window)[2].Value());
+        WaitUntil(
+            () => File.ReadAllText(settingsPath) is var json && json.Contains("DUMMY#2") && !json.Contains("D0000002"),
+            "The old display entries were not replaced.");
+    }
+
+    [Fact]
     public void BrokenSettingsFile_IsBackedUpAndAppStartsWithDefaults()
     {
         var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");

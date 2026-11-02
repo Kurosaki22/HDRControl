@@ -11,6 +11,7 @@ public static class ExceptionLog
                 "HDRControl",
                 "Logs");
 
+    private const long MaxLogBytes = 1024 * 1024;
     private static readonly object Gate = new();
 
     public static void Write(string context, object details)
@@ -20,8 +21,15 @@ public static class ExceptionLog
             lock (Gate)
             {
                 Directory.CreateDirectory(LogDirectory);
+                var logPath = Path.Combine(LogDirectory, "ExceptionLog.txt");
+                // Keeps at most the current and one previous file, about 2 MB in all.
+                if (File.Exists(logPath) && new FileInfo(logPath).Length > MaxLogBytes)
+                {
+                    File.Move(logPath, Path.Combine(LogDirectory, "ExceptionLog.old.txt"), overwrite: true);
+                }
+
                 File.AppendAllText(
-                    Path.Combine(LogDirectory, "ExceptionLog.txt"),
+                    logPath,
                     $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {context}{Environment.NewLine}{details}{Environment.NewLine}{Environment.NewLine}");
             }
         }
