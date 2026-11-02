@@ -13,10 +13,6 @@ namespace HDRControl.App.ViewModels;
 
 public sealed class MainViewModel : INotifyPropertyChanged
 {
-    private static readonly Brush SelectedNavigationForeground =
-        new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
-    private static readonly Brush DefaultNavigationForeground =
-        new SolidColorBrush(Color.FromArgb(255, 51, 54, 58));
     private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(3);
     private static readonly Brush SuccessNotificationBrush =
         new SolidColorBrush(Color.FromArgb(255, 36, 138, 90));
@@ -137,14 +133,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CurrentPageTitle => IsSettingsVisible ? "Settings" : "Displays";
 
     public string CurrentPageSubtitle => IsSettingsVisible
-        ? "Choose how HDR Control starts and closes."
+        ? "Choose how HDR Control looks, starts and closes."
         : "Choose which screens use high dynamic range.";
 
-    public Brush DisplaysNavigationForeground =>
-        IsSettingsVisible ? DefaultNavigationForeground : SelectedNavigationForeground;
-
-    public Brush SettingsNavigationForeground =>
-        IsSettingsVisible ? SelectedNavigationForeground : DefaultNavigationForeground;
 
     public bool IsBusy => IsRefreshing || IsApplying;
     public bool CanSelectMonitors => !IsBusy;
@@ -160,6 +151,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool CanConfigureAutoStart => _canConfigureAutoStart;
 
     public bool StartMinimizedToTray => Settings.StartMinimizedToTray;
+
+    public bool UseDarkMode => Settings.UseDarkMode;
+
+    // Sun while light, moon while dark; the name says what a click does.
+    public string ThemeGlyph => UseDarkMode ? "" : "";
+
+    public string ThemeToggleName => UseDarkMode ? "Switch to light mode" : "Switch to dark mode";
 
     public bool CanConfigureStartMinimized => _canConfigureAutoStart && _startWithWindows;
 
@@ -286,8 +284,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SettingsButtonLabel));
         OnPropertyChanged(nameof(CurrentPageTitle));
         OnPropertyChanged(nameof(CurrentPageSubtitle));
-        OnPropertyChanged(nameof(DisplaysNavigationForeground));
-        OnPropertyChanged(nameof(SettingsNavigationForeground));
     }
 
     public void SetMonitorHotkey(MonitorViewModel monitor, string? hotkey)
@@ -423,6 +419,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             ReportError("Could not update startup setting", error.Message);
         }
+    }
+
+    public void SetUseDarkMode(bool enabled)
+    {
+        if (Settings.UseDarkMode == enabled)
+        {
+            return;
+        }
+
+        Settings.UseDarkMode = enabled;
+        if (!TrySaveSettings())
+        {
+            Settings.UseDarkMode = !enabled;
+        }
+
+        OnPropertyChanged(nameof(UseDarkMode));
+        OnPropertyChanged(nameof(ThemeGlyph));
+        OnPropertyChanged(nameof(ThemeToggleName));
     }
 
     public void SetStartMinimizedToTray(bool enabled)

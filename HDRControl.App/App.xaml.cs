@@ -14,7 +14,7 @@ public partial class App : Application
 
     public App()
     {
-        DispatcherUnhandledException += (_, args) => ExceptionLog.Write("Unhandled UI exception", args.Exception);
+        // Also covers UI-thread crashes: the app never marks them handled, so they reach the AppDomain.
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             ExceptionLog.Write("Unhandled exception", args.ExceptionObject);
         TaskScheduler.UnobservedTaskException += (_, args) =>
@@ -39,6 +39,8 @@ public partial class App : Application
                 return;
             }
 
+            // High contrast keeps its system colors; the window applies the saved theme only outside it.
+            ApplyTheme(dark: false);
             if (SystemParameters.HighContrast)
             {
                 ApplyHighContrastBrushes();
@@ -46,11 +48,31 @@ public partial class App : Application
 
             _window = new MainWindow();
             _window.Launch(isAutoStart);
+
+            // Lets the UI tests crash the real executable to check the exception log.
+            if (Environment.GetEnvironmentVariable("HDRCONTROL_TEST_CRASH") is { Length: > 0 } crashMessage)
+            {
+                Dispatcher.BeginInvoke(new Action(() => throw new InvalidOperationException(crashMessage)));
+            }
         }
         catch (Exception error)
         {
             ShowStartupError(error);
             throw;
+        }
+    }
+
+    public static void ApplyTheme(bool dark)
+    {
+        var app = Current;
+        app.ThemeMode = dark ? ThemeMode.Dark : ThemeMode.Light;
+        var palette = new ResourceDictionary
+        {
+            Source = new Uri($"pack://application:,,,/Themes/{(dark ? "Dark" : "Light")}.xaml")
+        };
+        foreach (var key in palette.Keys)
+        {
+            app.Resources[key] = palette[key];
         }
     }
 
@@ -73,6 +95,7 @@ public partial class App : Application
         foreach (var key in textKeys) Resources[key] = text;
         Resources["DashboardAccentBrush"] = highlight;
         Resources["DashboardNavigationSelectedBrush"] = highlight;
+        Resources["DashboardNavigationSelectedTextBrush"] = SystemColors.HighlightTextBrush;
         Resources["DashboardOverlayBrush"] = Brushes.Transparent;
     }
 

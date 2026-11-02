@@ -59,16 +59,15 @@
                                 AutomationProperties.Name="Displays">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock
-                                        Style="{StaticResource IconStyle}"
+                                        Style="{StaticResource DisplaysNavigationTextStyle}"
+                                        FontFamily="{StaticResource IconFont}"
                                         Text="&#xE7F4;"
-                                        FontSize="16"
-                                        Foreground="{Binding DisplaysNavigationForeground}" />
+                                        FontSize="16" />
                                     <TextBlock
+                                        Style="{StaticResource DisplaysNavigationTextStyle}"
                                         Text="Displays"
                                         FontSize="13"
-                                        Margin="9,0,0,0"
-                                        VerticalAlignment="Center"
-                                        Foreground="{Binding DisplaysNavigationForeground}" />
+                                        Margin="9,0,0,0" />
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -84,16 +83,15 @@
                                 AutomationProperties.Name="Settings">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock
-                                        Style="{StaticResource IconStyle}"
+                                        Style="{StaticResource SettingsNavigationTextStyle}"
+                                        FontFamily="{StaticResource IconFont}"
                                         Text="&#xE713;"
-                                        FontSize="16"
-                                        Foreground="{Binding SettingsNavigationForeground}" />
+                                        FontSize="16" />
                                     <TextBlock
+                                        Style="{StaticResource SettingsNavigationTextStyle}"
                                         Text="Settings"
                                         FontSize="13"
-                                        Margin="9,0,0,0"
-                                        VerticalAlignment="Center"
-                                        Foreground="{Binding SettingsNavigationForeground}" />
+                                        Margin="9,0,0,0" />
                                 </StackPanel>
                             </Button>
                         </Grid>
@@ -315,6 +313,30 @@
                         Foreground="{DynamicResource DashboardMutedBrush}" />
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="0,0,2,5">
+                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,15,0">
+                                        <TextBlock Text="Dark mode" Style="{StaticResource TitleTextStyle}" />
+                                        <TextBlock Text="Switch between a light and a dark look." Style="{StaticResource MutedTextStyle}" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        Click="ThemeToggle_Click"
+                                        Width="36"
+                                        Height="32"
+                                        Padding="0"
+                                        VerticalAlignment="Center"
+                                        ToolTip="{Binding ThemeToggleName}"
+                                        AutomationProperties.Name="{Binding ThemeToggleName}">
+                                        <TextBlock Style="{StaticResource IconStyle}" Text="{Binding ThemeGlyph}" FontSize="15" HorizontalAlignment="Center" />
+                                    </Button>
+                                </Grid>
+                            </Border>
+
                             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
