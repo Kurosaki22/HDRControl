@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
-using Windows.System;
 
 namespace HDRControl.App.Services;
 
@@ -60,19 +59,12 @@ public sealed record HotkeyGesture(uint VirtualKey, uint Modifiers, string Displ
         return true;
     }
 
-    public static HotkeyGesture? Capture(VirtualKey key)
+    public static bool IsModifierKey(uint virtualKey) =>
+        virtualKey is 0x10 or 0x11 or 0x12 or >= 0xA0 and <= 0xA5 or 0x5B or 0x5C;
+
+    public static HotkeyGesture? Capture(uint virtualKey)
     {
-        if (key is Windows.System.VirtualKey.Control
-            or Windows.System.VirtualKey.LeftControl
-            or Windows.System.VirtualKey.RightControl
-            or Windows.System.VirtualKey.Menu
-            or Windows.System.VirtualKey.LeftMenu
-            or Windows.System.VirtualKey.RightMenu
-            or Windows.System.VirtualKey.Shift
-            or Windows.System.VirtualKey.LeftShift
-            or Windows.System.VirtualKey.RightShift
-            or Windows.System.VirtualKey.LeftWindows
-            or Windows.System.VirtualKey.RightWindows)
+        if (IsModifierKey(virtualKey))
         {
             return null;
         }
@@ -98,7 +90,6 @@ public sealed record HotkeyGesture(uint VirtualKey, uint Modifiers, string Displ
             modifiers |= ModWindows;
         }
 
-        var virtualKey = (uint)key;
         if ((modifiers & (ModControl | ModAlt | ModWindows)) == 0
             || !TryGetKeyName(virtualKey, out _))
         {

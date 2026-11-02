@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
+using System.Windows;
+using System.Windows.Media;
 using HDRControl.App.Services;
-using Microsoft.UI.Xaml;
 
 namespace HDRControl.App;
 
@@ -13,32 +14,19 @@ public partial class App : Application
 
     public App()
     {
-        Environment.SetEnvironmentVariable(
-            "MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY",
-            AppContext.BaseDirectory);
-
-        UnhandledException += (_, args) => ExceptionLog.Write("Unhandled UI exception", args.Exception);
+        DispatcherUnhandledException += (_, args) => ExceptionLog.Write("Unhandled UI exception", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             ExceptionLog.Write("Unhandled exception", args.ExceptionObject);
         TaskScheduler.UnobservedTaskException += (_, args) =>
             ExceptionLog.Write("Unobserved task exception", args.Exception);
-
-        try
-        {
-            InitializeComponent();
-        }
-        catch (Exception error)
-        {
-            ShowStartupError(error);
-            throw;
-        }
     }
 
-    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    protected override void OnStartup(StartupEventArgs args)
     {
+        base.OnStartup(args);
         try
         {
-            var isAutoStart = Environment.GetCommandLineArgs().Contains(AutoStartService.StartupArgument);
+            var isAutoStart = args.Args.Contains(AutoStartService.StartupArgument);
             _singleInstanceMutex = new Mutex(true, "HDRControl.SingleInstance", out var isFirstInstance);
             if (!isFirstInstance)
             {
@@ -47,8 +35,13 @@ public partial class App : Application
                     SystemTrayService.RequestShowRunningInstance();
                 }
 
-                Exit();
+                Shutdown();
                 return;
+            }
+
+            if (SystemParameters.HighContrast)
+            {
+                ApplyHighContrastBrushes();
             }
 
             _window = new MainWindow();
@@ -59,6 +52,28 @@ public partial class App : Application
             ShowStartupError(error);
             throw;
         }
+    }
+
+    private void ApplyHighContrastBrushes()
+    {
+        var window = SystemColors.WindowBrush;
+        var text = SystemColors.WindowTextBrush;
+        var highlight = SystemColors.HighlightBrush;
+        string[] windowKeys =
+        [
+            "DashboardBackgroundBrush", "DashboardSidebarBrush", "DashboardCardBrush", "DashboardAccentSoftBrush",
+            "DashboardToastBrush", "DashboardHotkeyBrush"
+        ];
+        string[] textKeys =
+        [
+            "DashboardCardBorderBrush", "DashboardGlassBorderBrush", "DashboardTextBrush", "DashboardMutedBrush",
+            "DashboardHotkeyBorderBrush"
+        ];
+        foreach (var key in windowKeys) Resources[key] = window;
+        foreach (var key in textKeys) Resources[key] = text;
+        Resources["DashboardAccentBrush"] = highlight;
+        Resources["DashboardNavigationSelectedBrush"] = highlight;
+        Resources["DashboardOverlayBrush"] = Brushes.Transparent;
     }
 
     private static void ShowStartupError(Exception error)
