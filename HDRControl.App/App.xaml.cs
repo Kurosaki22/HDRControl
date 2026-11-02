@@ -17,6 +17,12 @@ public partial class App : Application
             "MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY",
             AppContext.BaseDirectory);
 
+        UnhandledException += (_, args) => ExceptionLog.Write("Unhandled UI exception", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            ExceptionLog.Write("Unhandled exception", args.ExceptionObject);
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+            ExceptionLog.Write("Unobserved task exception", args.Exception);
+
         try
         {
             InitializeComponent();
@@ -55,8 +61,11 @@ public partial class App : Application
         }
     }
 
-    private static void ShowStartupError(Exception error) =>
+    private static void ShowStartupError(Exception error)
+    {
+        ExceptionLog.Write("Startup error", error);
         MessageBoxW(IntPtr.Zero, error.ToString(), "HDR Control – Startup error", MessageBoxError);
+    }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
     private static extern int MessageBoxW(

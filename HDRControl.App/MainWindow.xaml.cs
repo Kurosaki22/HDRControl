@@ -91,7 +91,8 @@ public sealed partial class MainWindow : Window
         if (sender.RasterizationScale != _rasterizationScale)
         {
             _rasterizationScale = sender.RasterizationScale;
-            RefreshRendering();
+            // Swapping SystemBackdrop here crashes WinUI (access violation) while the window is dragged across monitors.
+            RootGrid.InvalidateMeasure();
         }
     }
 
@@ -173,6 +174,22 @@ public sealed partial class MainWindow : Window
         catch (Exception error) when (error is InvalidOperationException or COMException)
         {
             ViewModel.ReportError("Could not reset hotkeys", error.Message);
+        }
+    }
+
+    public string LogDirectory => ExceptionLog.LogDirectory;
+
+    private void OpenLogFolder_Click(object sender, RoutedEventArgs args)
+    {
+        try
+        {
+            // Create it so the button works before the first error was logged.
+            Directory.CreateDirectory(ExceptionLog.LogDirectory);
+            System.Diagnostics.Process.Start("explorer.exe", $"\"{ExceptionLog.LogDirectory}\"");
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or Win32Exception)
+        {
+            ViewModel.ReportError("Could not open log folder", error.Message);
         }
     }
 

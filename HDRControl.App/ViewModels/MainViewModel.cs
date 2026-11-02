@@ -726,6 +726,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void ShowNotification(InfoBarSeverity severity, string title, string message)
     {
+        if (severity == InfoBarSeverity.Error)
+        {
+            ExceptionLog.Write(title, message);
+        }
+
         NotificationSeverity = severity;
         NotificationTitle = title;
         NotificationMessage = message;

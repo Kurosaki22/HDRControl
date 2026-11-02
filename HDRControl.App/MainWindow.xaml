@@ -459,6 +459,35 @@
                                         AutomationProperties.Name="Reset all hotkeys" />
                                 </Grid>
                             </Border>
+
+                            <Border
+                                Padding="14,8"
+                                CornerRadius="12"
+                                Background="{ThemeResource DashboardCardBrush}"
+                                BorderBrush="{ThemeResource DashboardGlassBorderBrush}"
+                                BorderThickness="1">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="15">
+                                    <StackPanel Spacing="3" VerticalAlignment="Center">
+                                        <TextBlock
+                                            Text="Exception log"
+                                            FontSize="14"
+                                            FontWeight="SemiBold"
+                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                                        <TextBlock
+                                            Text="Errors and crashes are written to ExceptionLog.txt in the Logs folder. Attach it when you report a problem."
+                                            FontSize="12"
+                                            TextWrapping="Wrap"
+                                            Foreground="{ThemeResource DashboardMutedBrush}" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="1"
+                                        Content="Open folder"
+                                        Click="OpenLogFolder_Click"
+                                        VerticalAlignment="Center"
+                                        ToolTipService.ToolTip="{x:Bind LogDirectory}"
+                                        AutomationProperties.Name="Open exception log folder" />
+                                </Grid>
+                            </Border>
                         </StackPanel>
                         </ScrollViewer>
                     </Grid>
