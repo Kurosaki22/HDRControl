@@ -6,10 +6,8 @@ using System.Security;
 using System.Windows.Input;
 using HDRControl.App.Models;
 using HDRControl.App.Services;
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
-using Windows.UI;
+using System.Windows;
+using System.Windows.Media;
 
 namespace HDRControl.App.ViewModels;
 
@@ -39,7 +37,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private string _notificationTitle = string.Empty;
     private string _notificationMessage = string.Empty;
     private string _lastUpdatedText = "Detecting displays";
-    private InfoBarSeverity _notificationSeverity = InfoBarSeverity.Informational;
+    private NotificationSeverity _notificationSeverity = NotificationSeverity.Informational;
     private bool _startWithWindows;
     private bool _canConfigureAutoStart;
 
@@ -228,7 +226,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         private set => SetProperty(ref _lastUpdatedText, value);
     }
 
-    private InfoBarSeverity NotificationSeverity
+    private NotificationSeverity NotificationSeverity
     {
         get => _notificationSeverity;
         set
@@ -243,17 +241,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public string NotificationGlyph => _notificationSeverity switch
     {
-        InfoBarSeverity.Success => "",
-        InfoBarSeverity.Warning => "",
-        InfoBarSeverity.Error => "",
+        NotificationSeverity.Success => "",
+        NotificationSeverity.Warning => "",
+        NotificationSeverity.Error => "",
         _ => ""
     };
 
     public Brush NotificationIconBrush => _notificationSeverity switch
     {
-        InfoBarSeverity.Success => SuccessNotificationBrush,
-        InfoBarSeverity.Warning => WarningNotificationBrush,
-        InfoBarSeverity.Error => ErrorNotificationBrush,
+        NotificationSeverity.Success => SuccessNotificationBrush,
+        NotificationSeverity.Warning => WarningNotificationBrush,
+        NotificationSeverity.Error => ErrorNotificationBrush,
         _ => InformationalNotificationBrush
     };
 
@@ -370,7 +368,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         HotkeyConfigurationChanged?.Invoke();
         if (saved)
         {
-            ShowNotification(InfoBarSeverity.Success, "Hotkeys reset", "All hotkeys are back to their defaults.");
+            ShowNotification(NotificationSeverity.Success, "Hotkeys reset", "All hotkeys are back to their defaults.");
         }
     }
 
@@ -472,10 +470,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
 
     public void ReportError(string title, string message) =>
-        ShowNotification(InfoBarSeverity.Error, title, message);
+        ShowNotification(NotificationSeverity.Error, title, message);
 
     public void ReportWarning(string title, string message) =>
-        ShowNotification(InfoBarSeverity.Warning, title, message);
+        ShowNotification(NotificationSeverity.Warning, title, message);
 
     public async Task SetMonitorHdrEnabledAsync(MonitorViewModel monitor, bool enabled)
     {
@@ -505,12 +503,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
             if (applyError is not null)
             {
-                ShowNotification(InfoBarSeverity.Error, "Could not update display", applyError);
+                ShowNotification(NotificationSeverity.Error, "Could not update display", applyError);
             }
             else
             {
                 ShowNotification(
-                    InfoBarSeverity.Success,
+                    NotificationSeverity.Success,
                     $"HDR {(enabled ? "enabled" : "disabled")}",
                     $"HDR was {(enabled ? "enabled" : "disabled")} for {monitor.Name}.");
             }
@@ -563,14 +561,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (errors.Count > 0)
             {
                 ShowNotification(
-                    InfoBarSeverity.Error,
+                    NotificationSeverity.Error,
                     "Some displays could not be updated",
                     string.Join(Environment.NewLine, errors));
             }
             else
             {
                 ShowNotification(
-                    InfoBarSeverity.Success,
+                    NotificationSeverity.Success,
                     $"HDR {(enabled ? "enabled" : "disabled")} for all displays",
                     $"HDR was {(enabled ? "enabled" : "disabled")} for {capableMonitors.Length} displays.");
             }
@@ -597,7 +595,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             var refreshError = await LoadDisplaysAsync();
             if (refreshError is not null)
             {
-                ShowNotification(InfoBarSeverity.Error, "Could not load displays", refreshError);
+                ShowNotification(NotificationSeverity.Error, "Could not load displays", refreshError);
                 return;
             }
 
@@ -610,7 +608,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
             if (diagnostics.Length > 0)
             {
                 ShowNotification(
-                    InfoBarSeverity.Warning,
+                    NotificationSeverity.Warning,
                     "Some display information is unavailable",
                     string.Join(Environment.NewLine, diagnostics));
             }
@@ -666,7 +664,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         if (settingsChanged && !TrySaveSettings())
         {
             ShowNotification(
-                InfoBarSeverity.Error,
+                NotificationSeverity.Error,
                 "Could not save hotkeys",
                 "Display hotkeys are active for this session but could not be saved.");
         }
@@ -716,7 +714,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         catch (Exception error) when (
             error is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
-            ShowNotification(InfoBarSeverity.Error, "Settings could not be saved", error.Message);
+            ShowNotification(NotificationSeverity.Error, "Settings could not be saved", error.Message);
             return false;
         }
     }
@@ -724,15 +722,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
     private static string AddError(string? current, string next) =>
         current is null ? next : $"{current}{Environment.NewLine}{next}";
 
-    private void ShowNotification(InfoBarSeverity severity, string title, string message)
+    private void ShowNotification(NotificationSeverity severity, string title, string message)
     {
+        if (severity == NotificationSeverity.Error)
+        {
+            ExceptionLog.Write(title, message);
+        }
+
         NotificationSeverity = severity;
         NotificationTitle = title;
         NotificationMessage = message;
         IsNotificationOpen = true;
 
         var version = ++_notificationVersion;
-        if (severity == InfoBarSeverity.Success)
+        if (severity == NotificationSeverity.Success)
         {
             _ = CloseNotificationLaterAsync(version);
         }
@@ -782,4 +785,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+public enum NotificationSeverity
+{
+    Informational,
+    Success,
+    Warning,
+    Error
 }

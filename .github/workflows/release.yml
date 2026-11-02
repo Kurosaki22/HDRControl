@@ -1,19 +1,47 @@
 name: Release
 
+# Every merged pull request into main bumps the patch version and publishes a release.
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
 
 permissions:
   contents: write
 
+# Two merges in quick succession must not compute the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   publish:
+    if: github.event.pull_request.merged == true
     runs-on: windows-2022
     steps:
-      - name: Check out source
+      - name: Check out merge commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Determine next version
+        shell: pwsh
+        run: |
+          $latest = git tag --list "v*" |
+            Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } |
+            ForEach-Object { [version]$_.TrimStart('v') } |
+            Sort-Object -Descending |
+            Select-Object -First 1
+          if ($null -eq $latest) {
+            $latest = [version]"1.0.0"
+          }
+
+          $next = "{0}.{1}.{2}" -f $latest.Major, $latest.Minor, ($latest.Build + 1)
+          "Latest release: v$latest, next release: v$next"
+          "VERSION=$next" >> $env:GITHUB_ENV
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -32,7 +60,7 @@ jobs:
             --runtime win-x64 `
             --self-contained true `
             -p:PublishSingleFile=true `
-            -p:Version=$($env:GITHUB_REF_NAME.TrimStart('v')) `
+            -p:Version=$env:VERSION `
             --output $publishDirectory
 
           $files = @(Get-ChildItem $publishDirectory -File)
@@ -45,9 +73,12 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         shell: pwsh
         run: |
-          gh release create $env:GITHUB_REF_NAME `
+          # gh creates the tag on the merge commit.
+          gh release create "v$env:VERSION" `
             (Join-Path $env:PUBLISH_DIRECTORY "HDRControl.exe") `
-            --title "HDR Control $env:GITHUB_REF_NAME" `
+            --target $env:MERGE_SHA `
+            --title "HDR Control v$env:VERSION" `
             --generate-notes

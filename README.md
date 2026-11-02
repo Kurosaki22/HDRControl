@@ -1,6 +1,6 @@
 # HDR Control
 
-HDR control for Windows displays with a compact, light C# WinUI 3 interface.
+HDR control for Windows displays with a compact, light C# WPF interface.
 Active displays are detected automatically; HDR is controlled directly through
 the Windows DisplayConfig APIs, without a separate CLI.
 
@@ -24,8 +24,11 @@ the Windows DisplayConfig APIs, without a separate CLI.
 - Choose whether HDR Control starts automatically when you sign in to Windows,
   and whether that automatic start stays minimized in the system tray.
 - Starting the app again brings the running instance to the front.
-- A fixed-size, light macOS System Settings-inspired sidebar with translucent
-  acrylic surfaces and compact display rows.
+- A light sidebar layout with compact display rows.
+- Renders cleanly when the window moves between monitors with different
+  scaling or on different graphics cards.
+- Errors and crashes are logged to
+  `%LocalAppData%\HDRControl\Logs\ExceptionLog.txt`; Settings opens the folder.
 - Set each display's hotkey and the all-displays hotkey on the Displays
   page; Settings contains the system-tray preference.
 - Publish a self-contained, single-file Windows executable.
@@ -49,7 +52,7 @@ starting the app yourself always shows the window.
 
 ## Publish a single executable
 
-Requires the .NET 10 SDK and Windows SDK 10.0.26100 or later.
+Requires the .NET 10 SDK.
 
 ```powershell
 dotnet publish .\HDRControl.App\HDRControl.App.csproj -c Release
@@ -57,7 +60,13 @@ dotnet publish .\HDRControl.App\HDRControl.App.csproj -c Release
 
 The self-contained x64 executable is written to:
 
-`HDRControl.App\bin\Release\net10.0-windows10.0.26100.0\win-x64\publish\HDRControl.exe`
+`HDRControl.App\bin\Release\net10.0-windows\win-x64\publish\HDRControl.exe`
 
-The Windows App SDK runtime and .NET runtime are bundled in the executable.
+The .NET and WPF runtimes are bundled in the executable.
 The first launch extracts native runtime components to a temporary directory.
+
+## Releases
+
+Every pull request merged into `main` raises the patch version of the latest
+`v*` tag (for example `v1.1.3` → `v1.1.4`), builds the executable and publishes
+it as a GitHub release.

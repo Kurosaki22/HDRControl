@@ -12,7 +12,8 @@ namespace HDRControl.Tests;
 public sealed class AppWindowTests : IDisposable
 {
     private const string MutexName = "HDRControl.SingleInstance";
-    private const string MainWindowClass = "WinUIDesktopWin32WindowClass";
+    // WPF names its window classes "HwndWrapper[<process>;;<guid>]".
+    private const string MainWindowClass = "HwndWrapper[HDRControl;";
     private const string DialogClass = "#32770";
     private const int SwHide = 0;
     private const byte VkControl = 0x11;
@@ -307,7 +308,7 @@ public sealed class AppWindowTests : IDisposable
             if (processId == process.Id && IsWindowVisible(window))
             {
                 var name = new StringBuilder(256);
-                if (GetClassNameW(window, name, name.Capacity) > 0 && name.ToString() == className)
+                if (GetClassNameW(window, name, name.Capacity) > 0 && name.ToString().StartsWith(className, StringComparison.Ordinal))
                 {
                     windows.Add(window);
                 }
