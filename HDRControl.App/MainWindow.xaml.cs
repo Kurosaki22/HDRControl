@@ -23,6 +23,7 @@ public sealed partial class MainWindow : Window
     private bool _isCapturingHotkey;
     private bool _isClosePromptOpen;
     private bool _trayAvailable;
+    private double _rasterizationScale;
 
     public MainViewModel ViewModel { get; }
 
@@ -33,11 +34,13 @@ public sealed partial class MainWindow : Window
             new DisplayConfigService(),
             new AppSettingsService(),
             new AutoStartService());
-        AppWindow.Resize(new SizeInt32(920, 680));
         AppWindow.Closing += AppWindow_Closing;
         SystemBackdrop = new DesktopAcrylicBackdrop();
 
         var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        // Resize takes physical pixels; scale so the window has the same layout size at every DPI.
+        var scale = GetDpiForWindow(windowHandle) / 96.0;
+        AppWindow.Resize(new SizeInt32((int)(920 * scale), (int)(680 * scale)));
         _appIconService = new AppIconService(windowHandle);
         _hotkeyService = new GlobalHotkeyService(windowHandle);
         _hotkeyService.HotkeyPressed += HandleGlobalHotkey;
@@ -71,7 +74,34 @@ public sealed partial class MainWindow : Window
         Activate();
     }
 
-    private void RootGrid_Loaded(object sender, RoutedEventArgs args) => InitializeViewModel();
+    private void RootGrid_Loaded(object sender, RoutedEventArgs args)
+    {
+        // Loaded can fire again; _hasInitialized is no guard here because tray autostart sets it earlier.
+        if (_rasterizationScale == 0)
+        {
+            _rasterizationScale = RootGrid.XamlRoot.RasterizationScale;
+            RootGrid.XamlRoot.Changed += XamlRoot_Changed;
+        }
+
+        InitializeViewModel();
+    }
+
+    private void XamlRoot_Changed(XamlRoot sender, XamlRootChangedEventArgs args)
+    {
+        if (sender.RasterizationScale != _rasterizationScale)
+        {
+            _rasterizationScale = sender.RasterizationScale;
+            RefreshRendering();
+        }
+    }
+
+    // After a DPI or display change (e.g. a monitor unplugged), WinUI can keep stale content on screen.
+    private void RefreshRendering()
+    {
+        SystemBackdrop = null;
+        SystemBackdrop = new DesktopAcrylicBackdrop();
+        RootGrid.InvalidateMeasure();
+    }
 
     private async void InitializeViewModel()
     {
@@ -271,6 +301,8 @@ public sealed partial class MainWindow : Window
 
         AppWindow.Show();
         Activate();
+        // A hidden window can miss the redraw after a display change.
+        RefreshRendering();
     }
 
     private void QuitFromTray()
@@ -364,4 +396,7 @@ public sealed partial class MainWindow : Window
             _isClosePromptOpen = false;
         }
     }
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    private static extern uint GetDpiForWindow(nint hwnd);
 }
