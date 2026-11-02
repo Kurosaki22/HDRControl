@@ -219,7 +219,55 @@ public sealed class AppWindowTests : IDisposable
         ((InvokePattern)button!.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
     }
 
-    private Process Launch(int? dummyDisplays = null)
+    [Fact]
+    public void ThemeToggle_SwitchesBetweenLightAndDark()
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(dummyDisplays: 1), MainWindowClass));
+        InvokeButton(window, "Settings");
+        // The saved theme decides where the toggle starts; dummy displays never save it.
+        var startsDark = window.FindFirst(
+            TreeScope.Descendants,
+            new PropertyCondition(AutomationElement.NameProperty, "Switch to light mode")) is not null;
+        var (first, second) = startsDark
+            ? ("Switch to light mode", "Switch to dark mode")
+            : ("Switch to dark mode", "Switch to light mode");
+
+        InvokeButton(window, first);
+        InvokeButton(window, second);
+
+        InvokeButton(window, first);
+    }
+
+    [Fact]
+    public void Crash_IsWrittenToExceptionLog()
+    {
+        var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+        var message = $"Test crash {Guid.NewGuid():N}";
+        try
+        {
+            var app = Launch(dummyDisplays: 1, new Dictionary<string, string>
+            {
+                ["HDRCONTROL_LOG_DIRECTORY"] = logDirectory,
+                ["HDRCONTROL_TEST_CRASH"] = message
+            });
+
+            Assert.True(app.WaitForExit(Timeout), "The app did not crash.");
+            Assert.NotEqual(0, app.ExitCode);
+            var log = File.ReadAllText(Path.Combine(logDirectory, "ExceptionLog.txt"));
+            Assert.Contains("] Unhandled exception", log);
+            // The crash must be logged exactly once.
+            Assert.Single(log.Split($"System.InvalidOperationException: {message}").Skip(1));
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                Directory.Delete(logDirectory, recursive: true);
+            }
+        }
+    }
+
+    private Process Launch(int? dummyDisplays = null, Dictionary<string, string>? environment = null)
     {
         var path = typeof(AppWindowTests).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -229,6 +277,11 @@ public sealed class AppWindowTests : IDisposable
         if (dummyDisplays is not null)
         {
             startInfo.Environment["HDRCONTROL_DUMMY_DISPLAYS"] = dummyDisplays.ToString();
+        }
+
+        foreach (var (name, value) in environment ?? [])
+        {
+            startInfo.Environment[name] = value;
         }
 
         var process = Process.Start(startInfo)!;

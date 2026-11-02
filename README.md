@@ -24,7 +24,8 @@ the Windows DisplayConfig APIs, without a separate CLI.
 - Choose whether HDR Control starts automatically when you sign in to Windows,
   and whether that automatic start stays minimized in the system tray.
 - Starting the app again brings the running instance to the front.
-- A light sidebar layout with compact display rows.
+- A sidebar layout with compact display rows, in a light or dark theme. Switch
+  it with the sun/moon button under "Dark mode" in Settings; the choice is saved.
 - Renders cleanly when the window moves between monitors with different
   scaling or on different graphics cards.
 - Errors and crashes are logged to

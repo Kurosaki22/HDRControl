@@ -35,6 +35,7 @@ public sealed partial class MainWindow : Window
             new AppSettingsService(),
             new AutoStartService());
         DataContext = ViewModel;
+        ApplyTheme();
 
         // The services need the window handle before the window is shown, e.g. for a start in the tray.
         _windowHandle = new WindowInteropHelper(this).EnsureHandle();
@@ -115,6 +116,20 @@ public sealed partial class MainWindow : Window
         if (sender is CheckBox option)
         {
             ViewModel.SetStartMinimizedToTray(option.IsChecked == true);
+        }
+    }
+
+    private void ThemeToggle_Click(object sender, RoutedEventArgs args)
+    {
+        ViewModel.SetUseDarkMode(!ViewModel.UseDarkMode);
+        ApplyTheme();
+    }
+
+    private void ApplyTheme()
+    {
+        if (!SystemParameters.HighContrast)
+        {
+            App.ApplyTheme(ViewModel.UseDarkMode);
         }
     }
 

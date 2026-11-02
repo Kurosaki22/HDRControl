@@ -2,10 +2,14 @@ namespace HDRControl.App.Services;
 
 public static class ExceptionLog
 {
-    public static readonly string LogDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "HDRControl",
-        "Logs");
+    // The UI tests point the log elsewhere so they never write into the user's log.
+    public static readonly string LogDirectory =
+        Environment.GetEnvironmentVariable("HDRCONTROL_LOG_DIRECTORY") is { Length: > 0 } testDirectory
+            ? testDirectory
+            : Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "HDRControl",
+                "Logs");
 
     private static readonly object Gate = new();
 
