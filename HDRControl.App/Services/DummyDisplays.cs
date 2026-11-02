@@ -24,6 +24,7 @@ public static class DummyDisplays
                 0,
                 HdrStatus.Disabled,
                 null,
-                false))
+                false,
+                $"DUMMY#{number}"))
             .ToList();
 }

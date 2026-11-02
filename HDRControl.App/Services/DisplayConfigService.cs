@@ -51,10 +51,12 @@ public sealed class DisplayConfigService
             }
 
             string name;
+            string? devicePath = null;
             string? diagnostic = null;
             try
             {
                 var target = GetTargetName(adapter, path.TargetInfo.Id);
+                devicePath = target.MonitorDevicePath.TrimEnd('\0');
                 name = (target.Flags & 1) != 0
                     ? target.MonitorFriendlyDeviceName.TrimEnd('\0')
                     : string.Empty;
@@ -91,7 +93,8 @@ public sealed class DisplayConfigService
                 adapter.HighPart,
                 status,
                 diagnostic,
-                usesHdrSpecificApi));
+                usesHdrSpecificApi,
+                devicePath));
         }
 
         return displays;

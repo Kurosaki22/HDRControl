@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using HDRControl.App.Controls;
 using HDRControl.App.Models;
 using HDRControl.App.Services;
@@ -17,10 +18,16 @@ public sealed partial class MainWindow : Window
     private readonly GlobalHotkeyService _hotkeyService;
     private readonly SystemTrayService _trayService;
     private readonly AppIconService _appIconService;
+    private const int WmDisplayChange = 0x007E;
+    private static readonly TimeSpan HotkeyWaitLimit = TimeSpan.FromSeconds(10);
     private readonly IntPtr _windowHandle;
+    private readonly HwndSource _windowSource;
+    private readonly DispatcherTimer _displayChangeTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _isExitRequested;
     private bool _hasInitialized;
     private bool _isCapturingHotkey;
+    // A count, not a flag: a second hotkey pressed meanwhile ends first and must not end the first one's window.
+    private int _hotkeysInProgress;
     private bool _isClosePromptOpen;
     private bool _trayAvailable;
     private TaskCompletionSource<DialogChoice>? _dialogResult;
@@ -45,8 +52,12 @@ public sealed partial class MainWindow : Window
         _trayService = new SystemTrayService(_windowHandle, _appIconService.SmallIcon);
         _trayService.OpenRequested += ShowFromTray;
         _trayService.QuitRequested += QuitFromTray;
+        _displayChangeTimer.Tick += DisplayChangeTimer_Tick;
+        _windowSource = HwndSource.FromHwnd(_windowHandle);
+        _windowSource.AddHook(WindowMessageHook);
 
         ViewModel.HotkeyConfigurationChanged += RegisterGlobalHotkeys;
+        ViewModel.NotificationShown += ShowHotkeyResultInTray;
         try
         {
             _trayService.SetVisible(true);
@@ -263,19 +274,65 @@ public sealed partial class MainWindow : Window
         ViewModel.ShowHotkeyRegistrationWarnings(warnings);
     }
 
-    private void HandleGlobalHotkey(string target)
+    private async void HandleGlobalHotkey(string target)
     {
-        if (target == GlobalHotkeyService.AllDisplaysHotkeyTarget)
+        _hotkeysInProgress++;
+        try
         {
-            _ = ViewModel.ToggleAllDisplaysHdrAsync();
+            // A press during a running change would be dropped; wait for it so quick presses run in turn.
+            var waitedSince = DateTime.UtcNow;
+            while (ViewModel.IsBusy)
+            {
+                if (DateTime.UtcNow - waitedSince > HotkeyWaitLimit)
+                {
+                    return;
+                }
+
+                await Task.Delay(100);
+            }
+
+            await (target == GlobalHotkeyService.AllDisplaysHotkeyTarget
+                ? ViewModel.ToggleAllDisplaysHdrAsync()
+                : ViewModel.ToggleMonitorHdrAsync(target));
+        }
+        finally
+        {
+            _hotkeysInProgress--;
+        }
+    }
+
+    // The in-window toast is invisible while the app sits in the tray, so hotkey results go to Windows instead.
+    private void ShowHotkeyResultInTray(string title, string message)
+    {
+        if (_hotkeysInProgress > 0 && _trayAvailable && (!IsVisible || WindowState == WindowState.Minimized))
+        {
+            _trayService.ShowBalloon(title, message);
+        }
+    }
+
+    private IntPtr WindowMessageHook(IntPtr window, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message == WmDisplayChange)
+        {
+            // Windows sends a burst of these per change; refresh once it settles.
+            _displayChangeTimer.Stop();
+            _displayChangeTimer.Start();
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private async void DisplayChangeTimer_Tick(object? sender, EventArgs args)
+    {
+        _displayChangeTimer.Stop();
+        if (ViewModel.IsBusy)
+        {
+            // An HDR change is still applying; check again once it is done.
+            _displayChangeTimer.Start();
             return;
         }
 
-        var monitor = ViewModel.Monitors.FirstOrDefault(item => item.Identity == target);
-        if (monitor is not null)
-        {
-            _ = ViewModel.SetMonitorHdrEnabledAsync(monitor, !monitor.IsHdrEnabled);
-        }
+        await ViewModel.RefreshQuietlyAsync();
     }
 
     private void ShowFromTray()
@@ -323,6 +380,9 @@ public sealed partial class MainWindow : Window
         }
 
         ViewModel.HotkeyConfigurationChanged -= RegisterGlobalHotkeys;
+        ViewModel.NotificationShown -= ShowHotkeyResultInTray;
+        _windowSource.RemoveHook(WindowMessageHook);
+        _displayChangeTimer.Stop();
         _hotkeyService.Dispose();
         _trayService.Dispose();
         _appIconService.Dispose();

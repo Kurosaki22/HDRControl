@@ -15,8 +15,12 @@ public sealed record MonitorInfo(
     int AdapterHighPart,
     HdrStatus Status,
     string? Diagnostic,
-    bool UsesHdrSpecificApi)
+    bool UsesHdrSpecificApi,
+    string? DevicePath = null)
 {
-    public string Identity =>
+    // The device path stays the same across restarts; the adapter LUID in LegacyIdentity does not.
+    public string Identity => DevicePath is { Length: > 0 } ? DevicePath : LegacyIdentity;
+
+    public string LegacyIdentity =>
         $"{AdapterHighPart:X8}:{AdapterLowPart:X8}:{TargetId:X8}";
 }

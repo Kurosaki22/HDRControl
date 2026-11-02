@@ -13,7 +13,7 @@ namespace HDRControl.App.ViewModels;
 
 public sealed class MainViewModel : INotifyPropertyChanged
 {
-    private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(6);
     private static readonly Brush SuccessNotificationBrush =
         new SolidColorBrush(Color.FromArgb(255, 36, 138, 90));
     private static readonly Brush WarningNotificationBrush =
@@ -52,8 +52,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _startWithWindows = _autoStartService.IsEnabled();
             _canConfigureAutoStart = true;
+            if (_startWithWindows)
+            {
+                // The entry still points to where the exe was when startup was turned on.
+                _autoStartService.RepairPath();
+            }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or SecurityException)
+        catch (Exception error) when (
+            error is IOException or UnauthorizedAccessException or SecurityException or InvalidOperationException)
         {
             ReportError("Could not read startup setting", error.Message);
         }
@@ -61,6 +67,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? HotkeyConfigurationChanged;
+    public event Action<string, string>? NotificationShown;
 
     public ObservableCollection<MonitorViewModel> Monitors { get; } = [];
     public AppSettings Settings { get; }
@@ -256,7 +263,23 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AppVersionLabel =>
         $"Version {typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion}";
 
-    public Task InitializeAsync() => RefreshAsync();
+    public async Task InitializeAsync()
+    {
+        await RefreshAsync();
+        // Shown after the first refresh, which closes notifications when every display reads fine.
+        if (_settingsService.RecoveredBackupPath is { } backupPath)
+        {
+            ReportWarning(
+                "Settings were reset",
+                $"The settings file could not be read and was saved as {backupPath}.");
+        }
+        else if (_settingsService.ReadError is { } readError)
+        {
+            ReportWarning(
+                "Settings could not be read",
+                $"Default settings are used and changes are not saved until the next start. {readError}");
+        }
+    }
 
     public void DismissNotification() => IsNotificationOpen = false;
 
@@ -577,8 +600,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task ToggleMonitorHdrAsync(string identity)
+    {
+        await RefreshQuietlyAsync();
+        var monitor = Monitors.FirstOrDefault(item => item.Identity == identity);
+        if (monitor is not null)
+        {
+            await SetMonitorHdrEnabledAsync(monitor, !monitor.IsHdrEnabled);
+        }
+    }
+
     public async Task ToggleAllDisplaysHdrAsync()
     {
+        // A hotkey can fire long after the last refresh, and HDR may have been changed in Windows since.
+        await RefreshQuietlyAsync();
         if (IsBusy)
         {
             return;
@@ -679,6 +714,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    // Unlike RefreshAsync it leaves open notifications alone, e.g. the toast of the change that caused it.
+    public async Task RefreshQuietlyAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        IsRefreshing = true;
+        try
+        {
+            var refreshError = await LoadDisplaysAsync();
+            if (refreshError is not null)
+            {
+                ShowNotification(NotificationSeverity.Error, "Could not load displays", refreshError);
+                return;
+            }
+
+            LastUpdatedText = $"Last updated: {DateTime.Now:HH:mm}";
+        }
+        finally
+        {
+            IsRefreshing = false;
+            NotifyDashboardChanged();
+        }
+    }
+
     private async Task<string?> LoadDisplaysAsync()
     {
         IReadOnlyList<MonitorInfo> displays;
@@ -699,6 +761,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         for (var index = 0; index < displays.Count; index++)
         {
             var display = displays[index];
+            settingsChanged |= MigrateLegacyHotkey(display);
             // New displays, and returning ones whose hotkey was given away, get a free default hotkey.
             if (!Settings.MonitorHotkeys.ContainsKey(display.Identity))
             {
@@ -728,6 +791,37 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotifyDashboardChanged();
         HotkeyConfigurationChanged?.Invoke();
         return null;
+    }
+
+    // Older versions keyed displays by adapter LUID, which Windows reassigns on every restart, so one display
+    // piled up an entry per boot. Its newest hotkey moves to the stable identity and the old entries go.
+    // shortcut: two displays with the same target id on different adapters can't be told apart here; the
+    // first one takes the old hotkey and the second gets a default one.
+    private bool MigrateLegacyHotkey(MonitorInfo display)
+    {
+        if (display.Identity == display.LegacyIdentity || Settings.MonitorHotkeys.ContainsKey(display.Identity))
+        {
+            return false;
+        }
+
+        var suffix = $":{display.TargetId:X8}";
+        var legacyKeys = Settings.MonitorHotkeys.Keys
+            .Where(key => key.Length == display.LegacyIdentity.Length && key.EndsWith(suffix, StringComparison.Ordinal))
+            .ToList();
+        if (legacyKeys.Count == 0)
+        {
+            return false;
+        }
+
+        var source = legacyKeys.Contains(display.LegacyIdentity) ? display.LegacyIdentity : legacyKeys[^1];
+        var hotkey = Settings.MonitorHotkeys[source];
+        foreach (var key in legacyKeys)
+        {
+            Settings.MonitorHotkeys.Remove(key);
+        }
+
+        Settings.MonitorHotkeys[display.Identity] = hotkey;
+        return true;
     }
 
     private void ClearMonitors()
@@ -780,6 +874,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotificationTitle = title;
         NotificationMessage = message;
         IsNotificationOpen = true;
+        NotificationShown?.Invoke(title, message);
 
         var version = ++_notificationVersion;
         if (severity == NotificationSeverity.Success)

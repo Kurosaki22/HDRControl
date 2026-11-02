@@ -14,6 +14,11 @@ public sealed class SystemTrayService : IDisposable
     private const uint NifMessage = 1;
     private const uint NifIcon = 2;
     private const uint NifTip = 4;
+    private const uint NimModify = 1;
+    private const uint NifInfo = 0x10;
+    private const uint NifRealtime = 0x40;
+    private const uint NiifInfo = 1;
+    private const uint NiifNoSound = 0x10;
     private const uint MenuString = 0;
     private const uint TrackPopupMenuReturnCommand = 0x0100;
     private const uint MenuOpen = 1;
@@ -21,6 +26,8 @@ public sealed class SystemTrayService : IDisposable
     private const uint AllowAnyProcess = 0xFFFFFFFF;
     private static readonly IntPtr BroadcastWindow = new(0xFFFF);
     private static readonly uint ShowWindowMessage = RegisterWindowMessageW("HDRControl.ShowWindow");
+    // Explorer broadcasts this after it restarts; every tray icon has to be added again.
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessageW("TaskbarCreated");
     private readonly IntPtr _windowHandle;
     private readonly IntPtr _applicationIcon;
     private readonly SubclassProc _subclassProc;
@@ -70,6 +77,27 @@ public sealed class SystemTrayService : IDisposable
         _iconVisible = visible;
     }
 
+    public void ShowBalloon(string title, string message)
+    {
+        if (_disposed || !_iconVisible)
+        {
+            return;
+        }
+
+        var data = CreateIconData();
+        // Realtime: dropped instead of queued in the notification center when it cannot show right away.
+        data.Flags = NifInfo | NifRealtime;
+        data.InfoTitle = title.Length > 63 ? title[..63] : title;
+        data.Info = message.Length > 255 ? message[..255] : message;
+        data.InfoFlags = NiifInfo | NiifNoSound;
+        if (!Shell_NotifyIconW(NimModify, ref data))
+        {
+            ExceptionLog.Write(
+                "Tray notification could not be shown",
+                new Win32Exception(Marshal.GetLastWin32Error()).Message);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -80,9 +108,12 @@ public sealed class SystemTrayService : IDisposable
         if (_iconVisible)
         {
             var data = CreateIconData();
+            // Fails while Explorer is not running, e.g. at shutdown; quitting must still succeed.
             if (!Shell_NotifyIconW(NimDelete, ref data))
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "The system tray icon could not be removed.");
+                ExceptionLog.Write(
+                    "Tray icon could not be removed",
+                    new Win32Exception(Marshal.GetLastWin32Error()).Message);
             }
 
             _iconVisible = false;
@@ -104,6 +135,17 @@ public sealed class SystemTrayService : IDisposable
         {
             OpenRequested?.Invoke();
         }
+        else if (message == TaskbarCreatedMessage && _iconVisible)
+        {
+            var data = CreateIconData();
+            if (!Shell_NotifyIconW(NimAdd, ref data))
+            {
+                // Not thrown: an exception here would escape the window procedure.
+                ExceptionLog.Write(
+                    "Tray icon could not be restored",
+                    new Win32Exception(Marshal.GetLastWin32Error()).Message);
+            }
+        }
         else if (message == TrayCallbackMessage)
         {
             var notification = unchecked((uint)lParam.ToInt64());
@@ -113,7 +155,15 @@ public sealed class SystemTrayService : IDisposable
             }
             else if (notification == WmRightButtonUp)
             {
-                ShowContextMenu();
+                try
+                {
+                    ShowContextMenu();
+                }
+                catch (Win32Exception error)
+                {
+                    // Not rethrown: an exception here would escape the window procedure.
+                    ExceptionLog.Write("Tray menu failed", error);
+                }
             }
         }
 
