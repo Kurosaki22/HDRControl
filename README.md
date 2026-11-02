@@ -40,6 +40,9 @@ Set a monitor hotkey or the all-displays hotkey on the Displays page by
 clicking its field and pressing a modifier plus a key. Press Backspace to clear
 a hotkey. A hotkey that is already used by another display is rejected
 and the previous one stays. “Reset hotkeys” in Settings restores the defaults.
+Disconnected displays keep their hotkey in the settings and get it back when
+they are connected again. If that hotkey was given to another display in the
+meantime, the returning display gets a free default hotkey instead.
 If at least one supported display has HDR off, the all-displays
 action turns HDR on for every supported display; otherwise it turns HDR off.
 

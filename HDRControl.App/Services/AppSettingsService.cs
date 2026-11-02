@@ -10,7 +10,13 @@ public sealed class AppSettingsService
         WriteIndented = true
     };
 
-    private readonly string _settingsDirectory = Path.Combine(
+    // The UI tests use their own folder; there, settings are saved even with dummy displays.
+    private static readonly string? TestSettingsDirectory =
+        Environment.GetEnvironmentVariable("HDRCONTROL_SETTINGS_DIRECTORY") is { Length: > 0 } directory
+            ? directory
+            : null;
+
+    private readonly string _settingsDirectory = TestSettingsDirectory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "HDRControl");
     private readonly string _legacySettingsPath = Path.Combine(
@@ -21,7 +27,9 @@ public sealed class AppSettingsService
 
     public AppSettings Load()
     {
-        var settingsPath = File.Exists(SettingsPath) ? SettingsPath : _legacySettingsPath;
+        var settingsPath = File.Exists(SettingsPath) || TestSettingsDirectory is not null
+            ? SettingsPath
+            : _legacySettingsPath;
         if (!File.Exists(settingsPath))
         {
             return new AppSettings();
@@ -34,7 +42,7 @@ public sealed class AppSettingsService
 
     public void Save(AppSettings settings)
     {
-        if (DummyDisplays.IsActive)
+        if (DummyDisplays.IsActive && TestSettingsDirectory is null)
         {
             return;
         }

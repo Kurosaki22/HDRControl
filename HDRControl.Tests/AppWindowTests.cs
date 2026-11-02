@@ -23,6 +23,10 @@ public sealed class AppWindowTests : IDisposable
 
     private readonly List<Process> _started = [];
 
+    // Every test starts from empty settings, never the user's; launches within one test share them.
+    private readonly string _settingsDirectory =
+        Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+
     public AppWindowTests()
     {
         if (Mutex.TryOpenExisting(MutexName, out var running))
@@ -43,6 +47,11 @@ public sealed class AppWindowTests : IDisposable
             }
 
             process.Dispose();
+        }
+
+        if (Directory.Exists(_settingsDirectory))
+        {
+            Directory.Delete(_settingsDirectory, recursive: true);
         }
     }
 
@@ -207,7 +216,10 @@ public sealed class AppWindowTests : IDisposable
         }
     }
 
-    private static void InvokeButton(AutomationElement window, string name)
+    private static void InvokeButton(AutomationElement window, string name) =>
+        ((InvokePattern)WaitForButton(window, name).GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+
+    private static AutomationElement WaitForButton(AutomationElement window, string name)
     {
         var condition = new AndCondition(
             new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
@@ -216,26 +228,76 @@ public sealed class AppWindowTests : IDisposable
         WaitUntil(
             () => (button = window.FindFirst(TreeScope.Descendants, condition)) is not null,
             $"The button \"{name}\" did not appear.");
-        ((InvokePattern)button!.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        return button!;
     }
 
     [Fact]
-    public void ThemeToggle_SwitchesBetweenLightAndDark()
+    public void ReconnectedDisplay_GetsItsSavedHotkeyBack()
     {
-        var window = AutomationElement.FromHandle(WaitForWindow(Launch(dummyDisplays: 1), MainWindowClass));
+        var window = LaunchWithDisplays(3);
+        PressCtrlAlt(window, row: 3, '7');
+        WaitUntil(() => HotkeyBoxes(window)[3].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        window = LaunchWithDisplays(2);
+        Assert.Equal(3, HotkeyBoxes(window).Count);
+        StopAll();
+
+        window = LaunchWithDisplays(3);
+        Assert.Equal("Ctrl+Alt+7", HotkeyBoxes(window)[3].Value());
+    }
+
+    [Fact]
+    public void ReconnectedDisplay_WhoseHotkeyWasTaken_GetsDefaultHotkey()
+    {
+        var window = LaunchWithDisplays(3);
+        PressCtrlAlt(window, row: 3, '7');
+        WaitUntil(() => HotkeyBoxes(window)[3].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        // While display 3 is disconnected, its hotkey is free to be taken by display 2.
+        window = LaunchWithDisplays(2);
+        PressCtrlAlt(window, row: 2, '7');
+        WaitUntil(() => HotkeyBoxes(window)[2].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        window = LaunchWithDisplays(3);
+        Assert.Equal("Ctrl+Alt+7", HotkeyBoxes(window)[2].Value());
+        Assert.Equal("Ctrl+Alt+3", HotkeyBoxes(window)[3].Value());
+    }
+
+    // Starting with fewer dummy displays disconnects the last ones; starting with more reconnects them.
+    private AutomationElement LaunchWithDisplays(int displays)
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(displays), MainWindowClass));
+        WaitForText(window, $"Dummy Display {displays}");
+        return window;
+    }
+
+    private void StopAll()
+    {
+        foreach (var process in _started.Where(process => !process.HasExited))
+        {
+            process.Kill();
+            process.WaitForExit();
+        }
+    }
+
+    [Fact]
+    public void ThemeToggle_SwitchesThemeAndKeepsItAfterRestart()
+    {
+        var window = LaunchWithDisplays(1);
         InvokeButton(window, "Settings");
-        // The saved theme decides where the toggle starts; dummy displays never save it.
-        var startsDark = window.FindFirst(
-            TreeScope.Descendants,
-            new PropertyCondition(AutomationElement.NameProperty, "Switch to light mode")) is not null;
-        var (first, second) = startsDark
-            ? ("Switch to light mode", "Switch to dark mode")
-            : ("Switch to dark mode", "Switch to light mode");
+        InvokeButton(window, "Switch to dark mode");
+        InvokeButton(window, "Switch to light mode");
+        InvokeButton(window, "Switch to dark mode");
+        // Invoke returns before the click runs; wait for its result so the choice is saved before the stop.
+        WaitForButton(window, "Switch to light mode");
+        StopAll();
 
-        InvokeButton(window, first);
-        InvokeButton(window, second);
-
-        InvokeButton(window, first);
+        window = LaunchWithDisplays(1);
+        InvokeButton(window, "Settings");
+        WaitForButton(window, "Switch to light mode");
     }
 
     [Fact]
@@ -274,6 +336,7 @@ public sealed class AppWindowTests : IDisposable
             .Single(attribute => attribute.Key == "AppExecutable")
             .Value!;
         var startInfo = new ProcessStartInfo(Path.GetFullPath(path)) { UseShellExecute = false };
+        startInfo.Environment["HDRCONTROL_SETTINGS_DIRECTORY"] = _settingsDirectory;
         if (dummyDisplays is not null)
         {
             startInfo.Environment["HDRCONTROL_DUMMY_DISPLAYS"] = dummyDisplays.ToString();
