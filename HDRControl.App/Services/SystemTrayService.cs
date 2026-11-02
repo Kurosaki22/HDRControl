@@ -21,6 +21,8 @@ public sealed class SystemTrayService : IDisposable
     private const uint AllowAnyProcess = 0xFFFFFFFF;
     private static readonly IntPtr BroadcastWindow = new(0xFFFF);
     private static readonly uint ShowWindowMessage = RegisterWindowMessageW("HDRControl.ShowWindow");
+    // Explorer broadcasts this after it restarts; every tray icon has to be added again.
+    private static readonly uint TaskbarCreatedMessage = RegisterWindowMessageW("TaskbarCreated");
     private readonly IntPtr _windowHandle;
     private readonly IntPtr _applicationIcon;
     private readonly SubclassProc _subclassProc;
@@ -103,6 +105,17 @@ public sealed class SystemTrayService : IDisposable
         if (message == ShowWindowMessage)
         {
             OpenRequested?.Invoke();
+        }
+        else if (message == TaskbarCreatedMessage && _iconVisible)
+        {
+            var data = CreateIconData();
+            if (!Shell_NotifyIconW(NimAdd, ref data))
+            {
+                // Not thrown: an exception here would escape the window procedure.
+                ExceptionLog.Write(
+                    "Tray icon could not be restored",
+                    new Win32Exception(Marshal.GetLastWin32Error()).Message);
+            }
         }
         else if (message == TrayCallbackMessage)
         {

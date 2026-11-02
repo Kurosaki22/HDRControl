@@ -13,7 +13,7 @@ namespace HDRControl.App.ViewModels;
 
 public sealed class MainViewModel : INotifyPropertyChanged
 {
-    private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(6);
     private static readonly Brush SuccessNotificationBrush =
         new SolidColorBrush(Color.FromArgb(255, 36, 138, 90));
     private static readonly Brush WarningNotificationBrush =
@@ -256,7 +256,17 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string AppVersionLabel =>
         $"Version {typeof(MainViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion}";
 
-    public Task InitializeAsync() => RefreshAsync();
+    public async Task InitializeAsync()
+    {
+        await RefreshAsync();
+        // Shown after the first refresh, which closes notifications when every display reads fine.
+        if (_settingsService.RecoveredBackupPath is { } backupPath)
+        {
+            ReportWarning(
+                "Settings were reset",
+                $"The settings file could not be read and was saved as {backupPath}.");
+        }
+    }
 
     public void DismissNotification() => IsNotificationOpen = false;
 
@@ -577,8 +587,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task ToggleMonitorHdrAsync(string identity)
+    {
+        await RefreshQuietlyAsync();
+        var monitor = Monitors.FirstOrDefault(item => item.Identity == identity);
+        if (monitor is not null)
+        {
+            await SetMonitorHdrEnabledAsync(monitor, !monitor.IsHdrEnabled);
+        }
+    }
+
     public async Task ToggleAllDisplaysHdrAsync()
     {
+        // A hotkey can fire long after the last refresh, and HDR may have been changed in Windows since.
+        await RefreshQuietlyAsync();
         if (IsBusy)
         {
             return;
@@ -671,6 +693,33 @@ public sealed class MainViewModel : INotifyPropertyChanged
             {
                 IsNotificationOpen = false;
             }
+        }
+        finally
+        {
+            IsRefreshing = false;
+            NotifyDashboardChanged();
+        }
+    }
+
+    // Unlike RefreshAsync it leaves open notifications alone, e.g. the toast of the change that caused it.
+    public async Task RefreshQuietlyAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        IsRefreshing = true;
+        try
+        {
+            var refreshError = await LoadDisplaysAsync();
+            if (refreshError is not null)
+            {
+                ShowNotification(NotificationSeverity.Error, "Could not load displays", refreshError);
+                return;
+            }
+
+            LastUpdatedText = $"Last updated: {DateTime.Now:HH:mm}";
         }
         finally
         {

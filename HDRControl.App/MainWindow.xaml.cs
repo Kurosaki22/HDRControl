@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using HDRControl.App.Controls;
 using HDRControl.App.Models;
 using HDRControl.App.Services;
@@ -17,7 +18,10 @@ public sealed partial class MainWindow : Window
     private readonly GlobalHotkeyService _hotkeyService;
     private readonly SystemTrayService _trayService;
     private readonly AppIconService _appIconService;
+    private const int WmDisplayChange = 0x007E;
     private readonly IntPtr _windowHandle;
+    private readonly HwndSource _windowSource;
+    private readonly DispatcherTimer _displayChangeTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _isExitRequested;
     private bool _hasInitialized;
     private bool _isCapturingHotkey;
@@ -45,6 +49,9 @@ public sealed partial class MainWindow : Window
         _trayService = new SystemTrayService(_windowHandle, _appIconService.SmallIcon);
         _trayService.OpenRequested += ShowFromTray;
         _trayService.QuitRequested += QuitFromTray;
+        _displayChangeTimer.Tick += DisplayChangeTimer_Tick;
+        _windowSource = HwndSource.FromHwnd(_windowHandle);
+        _windowSource.AddHook(WindowMessageHook);
 
         ViewModel.HotkeyConfigurationChanged += RegisterGlobalHotkeys;
         try
@@ -271,11 +278,32 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var monitor = ViewModel.Monitors.FirstOrDefault(item => item.Identity == target);
-        if (monitor is not null)
+        _ = ViewModel.ToggleMonitorHdrAsync(target);
+    }
+
+    private IntPtr WindowMessageHook(IntPtr window, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (message == WmDisplayChange)
         {
-            _ = ViewModel.SetMonitorHdrEnabledAsync(monitor, !monitor.IsHdrEnabled);
+            // Windows sends a burst of these per change; refresh once it settles.
+            _displayChangeTimer.Stop();
+            _displayChangeTimer.Start();
         }
+
+        return IntPtr.Zero;
+    }
+
+    private async void DisplayChangeTimer_Tick(object? sender, EventArgs args)
+    {
+        _displayChangeTimer.Stop();
+        if (ViewModel.IsBusy)
+        {
+            // An HDR change is still applying; check again once it is done.
+            _displayChangeTimer.Start();
+            return;
+        }
+
+        await ViewModel.RefreshQuietlyAsync();
     }
 
     private void ShowFromTray()
@@ -323,6 +351,8 @@ public sealed partial class MainWindow : Window
         }
 
         ViewModel.HotkeyConfigurationChanged -= RegisterGlobalHotkeys;
+        _windowSource.RemoveHook(WindowMessageHook);
+        _displayChangeTimer.Stop();
         _hotkeyService.Dispose();
         _trayService.Dispose();
         _appIconService.Dispose();

@@ -329,6 +329,32 @@ public sealed class AppWindowTests : IDisposable
         }
     }
 
+    [Fact]
+    public void BrokenSettingsFile_IsBackedUpAndAppStartsWithDefaults()
+    {
+        var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_settingsDirectory);
+        var settingsPath = Path.Combine(_settingsDirectory, "settings.json");
+        File.WriteAllText(settingsPath, "{ broken");
+        try
+        {
+            var window = AutomationElement.FromHandle(WaitForWindow(
+                Launch(dummyDisplays: 1, new Dictionary<string, string> { ["HDRCONTROL_LOG_DIRECTORY"] = logDirectory }),
+                MainWindowClass));
+
+            WaitForText(window, "Settings were reset");
+            Assert.Equal("{ broken", File.ReadAllText($"{settingsPath}.bak"));
+            Assert.Equal("Ctrl+Alt+1", HotkeyBoxes(window)[1].Value());
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                Directory.Delete(logDirectory, recursive: true);
+            }
+        }
+    }
+
     private Process Launch(int? dummyDisplays = null, Dictionary<string, string>? environment = null)
     {
         var path = typeof(AppWindowTests).Assembly
