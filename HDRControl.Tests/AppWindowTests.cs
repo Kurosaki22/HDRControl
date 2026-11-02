@@ -23,6 +23,10 @@ public sealed class AppWindowTests : IDisposable
 
     private readonly List<Process> _started = [];
 
+    // Every test starts from empty settings, never the user's; launches within one test share them.
+    private readonly string _settingsDirectory =
+        Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+
     public AppWindowTests()
     {
         if (Mutex.TryOpenExisting(MutexName, out var running))
@@ -43,6 +47,11 @@ public sealed class AppWindowTests : IDisposable
             }
 
             process.Dispose();
+        }
+
+        if (Directory.Exists(_settingsDirectory))
+        {
+            Directory.Delete(_settingsDirectory, recursive: true);
         }
     }
 
@@ -207,7 +216,10 @@ public sealed class AppWindowTests : IDisposable
         }
     }
 
-    private static void InvokeButton(AutomationElement window, string name)
+    private static void InvokeButton(AutomationElement window, string name) =>
+        ((InvokePattern)WaitForButton(window, name).GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+
+    private static AutomationElement WaitForButton(AutomationElement window, string name)
     {
         var condition = new AndCondition(
             new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
@@ -216,19 +228,123 @@ public sealed class AppWindowTests : IDisposable
         WaitUntil(
             () => (button = window.FindFirst(TreeScope.Descendants, condition)) is not null,
             $"The button \"{name}\" did not appear.");
-        ((InvokePattern)button!.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        return button!;
     }
 
-    private Process Launch(int? dummyDisplays = null)
+    [Fact]
+    public void ReconnectedDisplay_GetsItsSavedHotkeyBack()
+    {
+        var window = LaunchWithDisplays(3);
+        PressCtrlAlt(window, row: 3, '7');
+        WaitUntil(() => HotkeyBoxes(window)[3].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        window = LaunchWithDisplays(2);
+        Assert.Equal(3, HotkeyBoxes(window).Count);
+        StopAll();
+
+        window = LaunchWithDisplays(3);
+        Assert.Equal("Ctrl+Alt+7", HotkeyBoxes(window)[3].Value());
+    }
+
+    [Fact]
+    public void ReconnectedDisplay_WhoseHotkeyWasTaken_GetsDefaultHotkey()
+    {
+        var window = LaunchWithDisplays(3);
+        PressCtrlAlt(window, row: 3, '7');
+        WaitUntil(() => HotkeyBoxes(window)[3].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        // While display 3 is disconnected, its hotkey is free to be taken by display 2.
+        window = LaunchWithDisplays(2);
+        PressCtrlAlt(window, row: 2, '7');
+        WaitUntil(() => HotkeyBoxes(window)[2].Value() == "Ctrl+Alt+7", "The hotkey was not assigned.");
+        StopAll();
+
+        window = LaunchWithDisplays(3);
+        Assert.Equal("Ctrl+Alt+7", HotkeyBoxes(window)[2].Value());
+        Assert.Equal("Ctrl+Alt+3", HotkeyBoxes(window)[3].Value());
+    }
+
+    // Starting with fewer dummy displays disconnects the last ones; starting with more reconnects them.
+    private AutomationElement LaunchWithDisplays(int displays)
+    {
+        var window = AutomationElement.FromHandle(WaitForWindow(Launch(displays), MainWindowClass));
+        WaitForText(window, $"Dummy Display {displays}");
+        return window;
+    }
+
+    private void StopAll()
+    {
+        foreach (var process in _started.Where(process => !process.HasExited))
+        {
+            process.Kill();
+            process.WaitForExit();
+        }
+    }
+
+    [Fact]
+    public void ThemeToggle_SwitchesThemeAndKeepsItAfterRestart()
+    {
+        var window = LaunchWithDisplays(1);
+        InvokeButton(window, "Settings");
+        InvokeButton(window, "Switch to dark mode");
+        InvokeButton(window, "Switch to light mode");
+        InvokeButton(window, "Switch to dark mode");
+        // Invoke returns before the click runs; wait for its result so the choice is saved before the stop.
+        WaitForButton(window, "Switch to light mode");
+        StopAll();
+
+        window = LaunchWithDisplays(1);
+        InvokeButton(window, "Settings");
+        WaitForButton(window, "Switch to light mode");
+    }
+
+    [Fact]
+    public void Crash_IsWrittenToExceptionLog()
+    {
+        var logDirectory = Path.Combine(Path.GetTempPath(), $"HDRControl.Tests.{Guid.NewGuid():N}");
+        var message = $"Test crash {Guid.NewGuid():N}";
+        try
+        {
+            var app = Launch(dummyDisplays: 1, new Dictionary<string, string>
+            {
+                ["HDRCONTROL_LOG_DIRECTORY"] = logDirectory,
+                ["HDRCONTROL_TEST_CRASH"] = message
+            });
+
+            Assert.True(app.WaitForExit(Timeout), "The app did not crash.");
+            Assert.NotEqual(0, app.ExitCode);
+            var log = File.ReadAllText(Path.Combine(logDirectory, "ExceptionLog.txt"));
+            Assert.Contains("] Unhandled exception", log);
+            // The crash must be logged exactly once.
+            Assert.Single(log.Split($"System.InvalidOperationException: {message}").Skip(1));
+        }
+        finally
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                Directory.Delete(logDirectory, recursive: true);
+            }
+        }
+    }
+
+    private Process Launch(int? dummyDisplays = null, Dictionary<string, string>? environment = null)
     {
         var path = typeof(AppWindowTests).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
             .Single(attribute => attribute.Key == "AppExecutable")
             .Value!;
         var startInfo = new ProcessStartInfo(Path.GetFullPath(path)) { UseShellExecute = false };
+        startInfo.Environment["HDRCONTROL_SETTINGS_DIRECTORY"] = _settingsDirectory;
         if (dummyDisplays is not null)
         {
             startInfo.Environment["HDRCONTROL_DUMMY_DISPLAYS"] = dummyDisplays.ToString();
+        }
+
+        foreach (var (name, value) in environment ?? [])
+        {
+            startInfo.Environment[name] = value;
         }
 
         var process = Process.Start(startInfo)!;

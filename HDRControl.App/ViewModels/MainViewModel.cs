@@ -13,10 +13,6 @@ namespace HDRControl.App.ViewModels;
 
 public sealed class MainViewModel : INotifyPropertyChanged
 {
-    private static readonly Brush SelectedNavigationForeground =
-        new SolidColorBrush(Color.FromArgb(255, 255, 255, 255));
-    private static readonly Brush DefaultNavigationForeground =
-        new SolidColorBrush(Color.FromArgb(255, 51, 54, 58));
     private static readonly TimeSpan SuccessNotificationDuration = TimeSpan.FromSeconds(3);
     private static readonly Brush SuccessNotificationBrush =
         new SolidColorBrush(Color.FromArgb(255, 36, 138, 90));
@@ -137,14 +133,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string CurrentPageTitle => IsSettingsVisible ? "Settings" : "Displays";
 
     public string CurrentPageSubtitle => IsSettingsVisible
-        ? "Choose how HDR Control starts and closes."
+        ? "Choose how HDR Control looks, starts and closes."
         : "Choose which screens use high dynamic range.";
 
-    public Brush DisplaysNavigationForeground =>
-        IsSettingsVisible ? DefaultNavigationForeground : SelectedNavigationForeground;
-
-    public Brush SettingsNavigationForeground =>
-        IsSettingsVisible ? SelectedNavigationForeground : DefaultNavigationForeground;
 
     public bool IsBusy => IsRefreshing || IsApplying;
     public bool CanSelectMonitors => !IsBusy;
@@ -160,6 +151,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool CanConfigureAutoStart => _canConfigureAutoStart;
 
     public bool StartMinimizedToTray => Settings.StartMinimizedToTray;
+
+    public bool UseDarkMode => Settings.UseDarkMode;
+
+    // Sun while light, moon while dark; the name says what a click does.
+    public string ThemeGlyph => UseDarkMode ? "" : "";
+
+    public string ThemeToggleName => UseDarkMode ? "Switch to light mode" : "Switch to dark mode";
 
     public bool CanConfigureStartMinimized => _canConfigureAutoStart && _startWithWindows;
 
@@ -286,8 +284,6 @@ public sealed class MainViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(SettingsButtonLabel));
         OnPropertyChanged(nameof(CurrentPageTitle));
         OnPropertyChanged(nameof(CurrentPageSubtitle));
-        OnPropertyChanged(nameof(DisplaysNavigationForeground));
-        OnPropertyChanged(nameof(SettingsNavigationForeground));
     }
 
     public void SetMonitorHotkey(MonitorViewModel monitor, string? hotkey)
@@ -295,23 +291,62 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var normalized = NormalizeHotkey(hotkey);
         var oldHotkey = monitor.Hotkey;
         monitor.SetHotkey(normalized);
-        if (normalized is null)
-        {
-            Settings.MonitorHotkeys.Remove(monitor.Identity);
-        }
-        else
-        {
-            Settings.MonitorHotkeys[monitor.Identity] = normalized;
-        }
+        // null is kept on purpose: a missing entry would get the default hotkey on the next refresh.
+        Settings.MonitorHotkeys[monitor.Identity] = normalized;
+        var released = ReleaseFromDisconnectedMonitors(normalized);
 
         if (!TrySaveSettings())
         {
             monitor.SetHotkey(oldHotkey);
             RestoreMonitorHotkey(monitor.Identity, oldHotkey);
+            RestoreReleased(released);
             return;
         }
 
         HotkeyConfigurationChanged?.Invoke();
+    }
+
+    // A disconnected display keeps its saved hotkey for when it comes back. If that hotkey is given to
+    // another row meanwhile, the entry is dropped so the display gets a free default hotkey on reconnect.
+    private List<KeyValuePair<string, string?>> ReleaseFromDisconnectedMonitors(string? hotkey)
+    {
+        if (!HotkeyGesture.TryParse(hotkey, out var gesture) || gesture is null)
+        {
+            return [];
+        }
+
+        var connected = Monitors.Select(monitor => monitor.Identity).ToHashSet(StringComparer.Ordinal);
+        var released = Settings.MonitorHotkeys
+            .Where(entry => !connected.Contains(entry.Key) && IsSameGesture(gesture, entry.Value))
+            .ToList();
+        foreach (var entry in released)
+        {
+            Settings.MonitorHotkeys.Remove(entry.Key);
+        }
+
+        return released;
+    }
+
+    private void RestoreReleased(List<KeyValuePair<string, string?>> released)
+    {
+        foreach (var (identity, hotkey) in released)
+        {
+            Settings.MonitorHotkeys[identity] = hotkey;
+        }
+    }
+
+    // Ctrl+Alt+<position> unless a saved display or the all-displays row holds it; then the first free Ctrl+Alt+1-9.
+    private string? FindDefaultHotkey(int position)
+    {
+        var candidates = position is >= 1 and <= 9
+            ? Enumerable.Range(1, 9).Prepend(position)
+            : Enumerable.Range(1, 9);
+        return candidates
+            .Select(number => $"Ctrl+Alt+{number}")
+            .FirstOrDefault(candidate => HotkeyGesture.TryParse(candidate, out var gesture)
+                && gesture is not null
+                && !IsSameGesture(gesture, Settings.AllDisplaysHotkey)
+                && !Settings.MonitorHotkeys.Values.Any(saved => IsSameGesture(gesture, saved)));
     }
 
     // target is the row being edited, null for the all-displays row.
@@ -377,9 +412,11 @@ public sealed class MainViewModel : INotifyPropertyChanged
         var normalized = NormalizeHotkey(hotkey);
         var oldHotkey = Settings.AllDisplaysHotkey;
         Settings.AllDisplaysHotkey = normalized;
+        var released = ReleaseFromDisconnectedMonitors(normalized);
         if (!TrySaveSettings())
         {
             Settings.AllDisplaysHotkey = oldHotkey;
+            RestoreReleased(released);
             OnPropertyChanged(nameof(AllDisplaysHotkeyDisplayText));
             return;
         }
@@ -423,6 +460,24 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             ReportError("Could not update startup setting", error.Message);
         }
+    }
+
+    public void SetUseDarkMode(bool enabled)
+    {
+        if (Settings.UseDarkMode == enabled)
+        {
+            return;
+        }
+
+        Settings.UseDarkMode = enabled;
+        if (!TrySaveSettings())
+        {
+            Settings.UseDarkMode = !enabled;
+        }
+
+        OnPropertyChanged(nameof(UseDarkMode));
+        OnPropertyChanged(nameof(ThemeGlyph));
+        OnPropertyChanged(nameof(ThemeToggleName));
     }
 
     public void SetStartMinimizedToTray(bool enabled)
@@ -644,12 +699,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         for (var index = 0; index < displays.Count; index++)
         {
             var display = displays[index];
+            // New displays, and returning ones whose hotkey was given away, get a free default hotkey.
             if (!Settings.MonitorHotkeys.ContainsKey(display.Identity))
             {
                 Settings.MonitorHotkeys.Add(
                     display.Identity,
                     display.Status is HdrStatus.Enabled or HdrStatus.Disabled
-                        ? supportedDisplayIndex < 9 ? $"Ctrl+Alt+{++supportedDisplayIndex}" : null
+                        ? FindDefaultHotkey(++supportedDisplayIndex)
                         : null);
                 settingsChanged = true;
             }
@@ -692,17 +748,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
             : throw new ArgumentException("Use a modifier and a supported key for a global hotkey.", nameof(hotkey));
     }
 
-    private void RestoreMonitorHotkey(string identity, string? hotkey)
-    {
-        if (string.IsNullOrWhiteSpace(hotkey))
-        {
-            Settings.MonitorHotkeys.Remove(identity);
-        }
-        else
-        {
-            Settings.MonitorHotkeys[identity] = hotkey;
-        }
-    }
+    private void RestoreMonitorHotkey(string identity, string? hotkey) =>
+        Settings.MonitorHotkeys[identity] = string.IsNullOrWhiteSpace(hotkey) ? null : hotkey;
 
     private bool TrySaveSettings()
     {

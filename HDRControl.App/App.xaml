@@ -7,27 +7,35 @@
     ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- App.ApplyHighContrastBrushes replaces these with system colors in high contrast mode. -->
-            <SolidColorBrush x:Key="DashboardBackgroundBrush" Color="#FFF3F3F3" />
-            <SolidColorBrush x:Key="DashboardSidebarBrush" Color="#FFE9EAED" />
-            <SolidColorBrush x:Key="DashboardCardBrush" Color="#FFFBFCFE" />
-            <SolidColorBrush x:Key="DashboardCardBorderBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="DashboardGlassBorderBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="DashboardTextBrush" Color="#FF1B1B1B" />
-            <SolidColorBrush x:Key="DashboardMutedBrush" Color="#FF686A70" />
-            <SolidColorBrush x:Key="DashboardAccentBrush" Color="#FF0A84FF" />
-            <SolidColorBrush x:Key="DashboardAccentSoftBrush" Color="#33FFFFFF" />
-            <SolidColorBrush x:Key="DashboardNavigationSelectedBrush" Color="#D92674E8" />
-            <SolidColorBrush x:Key="DashboardToastBrush" Color="#FFFFFFFF" />
-            <SolidColorBrush x:Key="DashboardHotkeyBrush" Color="#0F000000" />
-            <SolidColorBrush x:Key="DashboardHotkeyBorderBrush" Color="Transparent" />
-            <SolidColorBrush x:Key="DashboardOverlayBrush" Color="#66000000" />
+            <!-- The Dashboard brushes come from Themes/Light.xaml or Themes/Dark.xaml, copied in by App.ApplyTheme.
+                 No merged dictionaries here: they would replace the Fluent dictionary that ThemeMode adds. -->
             <BooleanToVisibilityConverter x:Key="VisibleWhenTrue" />
             <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <Style x:Key="IconStyle" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
                 <Setter Property="VerticalAlignment" Value="Center" />
+            </Style>
+
+            <!-- Navigation labels turn white on the selected (blue) entry. -->
+            <Style x:Key="DisplaysNavigationTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource DashboardNavigationSelectedTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="SettingsNavigationTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsSettingsVisible}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource DashboardNavigationSelectedTextBrush}" />
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <Style x:Key="TitleTextStyle" TargetType="TextBlock">

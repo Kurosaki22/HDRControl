@@ -24,7 +24,8 @@ the Windows DisplayConfig APIs, without a separate CLI.
 - Choose whether HDR Control starts automatically when you sign in to Windows,
   and whether that automatic start stays minimized in the system tray.
 - Starting the app again brings the running instance to the front.
-- A light sidebar layout with compact display rows.
+- A sidebar layout with compact display rows, in a light or dark theme. Switch
+  it with the sun/moon button under "Dark mode" in Settings; the choice is saved.
 - Renders cleanly when the window moves between monitors with different
   scaling or on different graphics cards.
 - Errors and crashes are logged to
@@ -39,6 +40,9 @@ Set a monitor hotkey or the all-displays hotkey on the Displays page by
 clicking its field and pressing a modifier plus a key. Press Backspace to clear
 a hotkey. A hotkey that is already used by another display is rejected
 and the previous one stays. “Reset hotkeys” in Settings restores the defaults.
+Disconnected displays keep their hotkey in the settings and get it back when
+they are connected again. If that hotkey was given to another display in the
+meantime, the returning display gets a free default hotkey instead.
 If at least one supported display has HDR off, the all-displays
 action turns HDR on for every supported display; otherwise it turns HDR off.
 
