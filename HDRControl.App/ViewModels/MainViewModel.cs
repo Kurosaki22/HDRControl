@@ -52,8 +52,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         {
             _startWithWindows = _autoStartService.IsEnabled();
             _canConfigureAutoStart = true;
+            if (_startWithWindows)
+            {
+                // The entry still points to where the exe was when startup was turned on.
+                _autoStartService.RepairPath();
+            }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or SecurityException)
+        catch (Exception error) when (
+            error is IOException or UnauthorizedAccessException or SecurityException or InvalidOperationException)
         {
             ReportError("Could not read startup setting", error.Message);
         }
@@ -61,6 +67,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event Action? HotkeyConfigurationChanged;
+    public event Action<string, string>? NotificationShown;
 
     public ObservableCollection<MonitorViewModel> Monitors { get; } = [];
     public AppSettings Settings { get; }
@@ -829,6 +836,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         NotificationTitle = title;
         NotificationMessage = message;
         IsNotificationOpen = true;
+        NotificationShown?.Invoke(title, message);
 
         var version = ++_notificationVersion;
         if (severity == NotificationSeverity.Success)

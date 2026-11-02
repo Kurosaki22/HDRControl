@@ -25,6 +25,8 @@ public sealed partial class MainWindow : Window
     private bool _isExitRequested;
     private bool _hasInitialized;
     private bool _isCapturingHotkey;
+    // A count, not a flag: a second hotkey pressed meanwhile ends first and must not end the first one's window.
+    private int _hotkeysInProgress;
     private bool _isClosePromptOpen;
     private bool _trayAvailable;
     private TaskCompletionSource<DialogChoice>? _dialogResult;
@@ -54,6 +56,7 @@ public sealed partial class MainWindow : Window
         _windowSource.AddHook(WindowMessageHook);
 
         ViewModel.HotkeyConfigurationChanged += RegisterGlobalHotkeys;
+        ViewModel.NotificationShown += ShowHotkeyResultInTray;
         try
         {
             _trayService.SetVisible(true);
@@ -270,15 +273,28 @@ public sealed partial class MainWindow : Window
         ViewModel.ShowHotkeyRegistrationWarnings(warnings);
     }
 
-    private void HandleGlobalHotkey(string target)
+    private async void HandleGlobalHotkey(string target)
     {
-        if (target == GlobalHotkeyService.AllDisplaysHotkeyTarget)
+        _hotkeysInProgress++;
+        try
         {
-            _ = ViewModel.ToggleAllDisplaysHdrAsync();
-            return;
+            await (target == GlobalHotkeyService.AllDisplaysHotkeyTarget
+                ? ViewModel.ToggleAllDisplaysHdrAsync()
+                : ViewModel.ToggleMonitorHdrAsync(target));
         }
+        finally
+        {
+            _hotkeysInProgress--;
+        }
+    }
 
-        _ = ViewModel.ToggleMonitorHdrAsync(target);
+    // The in-window toast is invisible while the app sits in the tray, so hotkey results go to Windows instead.
+    private void ShowHotkeyResultInTray(string title, string message)
+    {
+        if (_hotkeysInProgress > 0 && _trayAvailable && (!IsVisible || WindowState == WindowState.Minimized))
+        {
+            _trayService.ShowBalloon(title, message);
+        }
     }
 
     private IntPtr WindowMessageHook(IntPtr window, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -351,6 +367,7 @@ public sealed partial class MainWindow : Window
         }
 
         ViewModel.HotkeyConfigurationChanged -= RegisterGlobalHotkeys;
+        ViewModel.NotificationShown -= ShowHotkeyResultInTray;
         _windowSource.RemoveHook(WindowMessageHook);
         _displayChangeTimer.Stop();
         _hotkeyService.Dispose();
