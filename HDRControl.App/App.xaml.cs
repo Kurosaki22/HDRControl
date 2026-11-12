@@ -83,19 +83,23 @@ public partial class App : Application
         var highlight = SystemColors.HighlightBrush;
         string[] windowKeys =
         [
-            "DashboardBackgroundBrush", "DashboardSidebarBrush", "DashboardCardBrush", "DashboardAccentSoftBrush",
-            "DashboardToastBrush", "DashboardHotkeyBrush"
+            "DashboardBackgroundBrush", "DashboardSidebarBrush", "DashboardCardBrush",
+            "DashboardToastBrush", "DashboardHotkeyBrush", "DashboardThumbBrush"
         ];
         string[] textKeys =
         [
             "DashboardCardBorderBrush", "DashboardGlassBorderBrush", "DashboardTextBrush", "DashboardMutedBrush",
-            "DashboardHotkeyBorderBrush"
+            "DashboardHotkeyBorderBrush", "DashboardTrackOffBrush", "DashboardBezelBrush"
+        ];
+        string[] highlightKeys =
+        [
+            "DashboardAccentBrush", "DashboardNavigationSelectedBrush", "DashboardAccentFillBrush",
+            "DashboardTrackOnBrush"
         ];
         foreach (var key in windowKeys) Resources[key] = window;
         foreach (var key in textKeys) Resources[key] = text;
-        Resources["DashboardAccentBrush"] = highlight;
-        Resources["DashboardNavigationSelectedBrush"] = highlight;
-        Resources["DashboardNavigationSelectedTextBrush"] = SystemColors.HighlightTextBrush;
+        foreach (var key in highlightKeys) Resources[key] = highlight;
+        Resources["DashboardOnAccentBrush"] = SystemColors.HighlightTextBrush;
         Resources["DashboardOverlayBrush"] = Brushes.Transparent;
     }
 
