@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/displays-dark.png" alt="HDR Control Displays page in dark mode: a top bar with the all-displays switch, and one monitor tile per display showing HDR on in blue and SDR off in grey, each with its hotkey and switch" width="100%">
+  <img src="screenshots/ui-displays-dark.png" alt="HDR Control Displays page in dark mode: a top bar with the all-displays switch, and one monitor tile per display showing HDR on in blue and SDR off in grey, each with its hotkey and switch" width="100%">
 </p>
 
 ## What is it?
@@ -58,8 +58,8 @@ It is a single `.exe`, needs no installer, and changes apply immediately.
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="screenshots/displays.png" alt="Displays page in light mode with one display in HDR and one in SDR"><br><sub>Displays, light theme</sub></td>
-    <td width="50%" align="center"><img src="screenshots/settings-dark.png" alt="Settings page in dark mode: dark mode, system tray, start with Windows, reset hotkeys and exception log rows"><br><sub>Settings, dark theme</sub></td>
+    <td width="50%" align="center"><img src="screenshots/ui-displays-light.png" alt="Displays page in light mode with one display in HDR and one in SDR"><br><sub>Displays, light theme</sub></td>
+    <td width="50%" align="center"><img src="screenshots/ui-settings-dark.png" alt="Settings page in dark mode: dark mode, system tray, start with Windows, reset hotkeys and exception log rows"><br><sub>Settings, dark theme</sub></td>
   </tr>
 </table>
 
