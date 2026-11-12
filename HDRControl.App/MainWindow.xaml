@@ -8,193 +8,61 @@
     Width="920"
     Height="680"
     WindowStartupLocation="CenterScreen"
+    FontFamily="{StaticResource UiFont}"
     Background="{DynamicResource DashboardBackgroundBrush}"
     Closing="Window_Closing">
     <Grid>
         <Grid x:Name="RootGrid" Loaded="RootGrid_Loaded">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="204" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
+            <!-- Top bar: logo, the two pages, and the all-displays switch. -->
             <Border
-                Grid.Column="0"
-                Margin="14,14,7,14"
-                Padding="15"
-                CornerRadius="20"
-                Background="{DynamicResource DashboardSidebarBrush}"
-                BorderBrush="{DynamicResource DashboardGlassBorderBrush}"
-                BorderThickness="1">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Orientation="Horizontal" Margin="4,3,4,20">
-                        <Border Width="30" Height="30" CornerRadius="10" Background="{DynamicResource DashboardCardBrush}">
-                            <TextBlock
-                                Style="{StaticResource IconStyle}"
-                                Text="&#xE7F4;"
-                                FontSize="15"
-                                Foreground="{DynamicResource DashboardAccentBrush}"
-                                HorizontalAlignment="Center" />
-                        </Border>
-                        <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="HDR Control" Style="{StaticResource TitleTextStyle}" />
-                            <TextBlock Text="Display controls" FontSize="10" Foreground="{DynamicResource DashboardMutedBrush}" />
-                        </StackPanel>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="1">
-                        <Grid Height="42" Margin="0,0,0,7">
-                            <Border
-                                CornerRadius="9"
-                                Background="{DynamicResource DashboardNavigationSelectedBrush}"
-                                Visibility="{Binding DisplaysPageVisibility}" />
-                            <Button
-                                Style="{StaticResource NavigationButtonStyle}"
-                                Click="DisplaysNavigation_Click"
-                                AutomationProperties.Name="Displays">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock
-                                        Style="{StaticResource DisplaysNavigationTextStyle}"
-                                        FontFamily="{StaticResource IconFont}"
-                                        Text="&#xE7F4;"
-                                        FontSize="16" />
-                                    <TextBlock
-                                        Style="{StaticResource DisplaysNavigationTextStyle}"
-                                        Text="Displays"
-                                        FontSize="13"
-                                        Margin="9,0,0,0" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-
-                        <Grid Height="42">
-                            <Border
-                                CornerRadius="9"
-                                Background="{DynamicResource DashboardNavigationSelectedBrush}"
-                                Visibility="{Binding SettingsPageVisibility}" />
-                            <Button
-                                Style="{StaticResource NavigationButtonStyle}"
-                                Click="SettingsNavigation_Click"
-                                AutomationProperties.Name="Settings">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock
-                                        Style="{StaticResource SettingsNavigationTextStyle}"
-                                        FontFamily="{StaticResource IconFont}"
-                                        Text="&#xE713;"
-                                        FontSize="16" />
-                                    <TextBlock
-                                        Style="{StaticResource SettingsNavigationTextStyle}"
-                                        Text="Settings"
-                                        FontSize="13"
-                                        Margin="9,0,0,0" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="2" Margin="5,8,4,2">
-                        <TextBlock Text="{Binding DetectedMonitorCountLabel}" FontSize="11" Foreground="{DynamicResource DashboardMutedBrush}" />
-                        <TextBlock Text="{Binding LastUpdatedText}" FontSize="10" Margin="0,2,0,0" Foreground="{DynamicResource DashboardMutedBrush}" />
-                        <TextBlock Text="{Binding AppVersionLabel, Mode=OneTime}" FontSize="10" Margin="0,2,0,0" Foreground="{DynamicResource DashboardMutedBrush}" />
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <Grid Grid.Column="1" Margin="15,14,18,14">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid Margin="7,5,7,17">
+                BorderBrush="{DynamicResource DashboardCardBorderBrush}"
+                BorderThickness="0,0,0,1">
+                <Grid Margin="20,0">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock
-                            Text="{Binding CurrentPageTitle}"
-                            FontSize="22"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource DashboardTextBrush}" />
-                        <TextBlock
-                            Text="{Binding CurrentPageSubtitle}"
-                            FontSize="12"
-                            Margin="0,1,0,0"
-                            Foreground="{DynamicResource DashboardMutedBrush}" />
+                            Style="{StaticResource IconStyle}"
+                            Text="&#xE7F4;"
+                            FontSize="18"
+                            Foreground="{DynamicResource DashboardAccentBrush}" />
+                        <TextBlock Text="HDR Control" Style="{StaticResource TitleTextStyle}" Margin="8,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
+
                     <Button
                         Grid.Column="1"
-                        Command="{Binding RefreshCommand}"
-                        Visibility="{Binding RefreshButtonVisibility}"
-                        ToolTip="Refresh display list"
-                        AutomationProperties.Name="Refresh display list"
-                        Padding="11,8"
-                        MinHeight="36">
-                        <TextBlock Style="{StaticResource IconStyle}" Text="&#xE72C;" FontSize="15" />
-                    </Button>
-                </Grid>
+                        Margin="24,0,0,0"
+                        Style="{StaticResource DisplaysTabStyle}"
+                        Content="Displays"
+                        Click="DisplaysNavigation_Click"
+                        AutomationProperties.Name="Displays" />
+                    <Button
+                        Grid.Column="2"
+                        Margin="18,0,0,0"
+                        Style="{StaticResource SettingsTabStyle}"
+                        Content="Settings"
+                        Click="SettingsNavigation_Click"
+                        AutomationProperties.Name="Settings" />
 
-                <Grid Grid.Row="1" Visibility="{Binding DisplaysPageVisibility}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Grid Margin="5,0,5,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Text="HDR control"
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{DynamicResource DashboardMutedBrush}"
-                            VerticalAlignment="Center" />
-                        <Border
-                            Grid.Column="1"
-                            Padding="8,4"
-                            CornerRadius="10"
-                            Background="{DynamicResource DashboardAccentSoftBrush}"
-                            VerticalAlignment="Center">
-                            <TextBlock
-                                Text="{Binding HdrCapableCountLabel}"
-                                FontSize="10"
-                                FontWeight="SemiBold"
-                                Foreground="{DynamicResource DashboardAccentBrush}" />
-                        </Border>
-                    </Grid>
-
-                    <Border
-                        Grid.Row="1"
-                        Style="{StaticResource CardStyle}"
-                        BorderBrush="{DynamicResource DashboardCardBorderBrush}"
-                        Margin="0,0,2,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                Style="{StaticResource IconStyle}"
-                                Text="&#xE8D4;"
-                                FontSize="16"
-                                Foreground="{DynamicResource DashboardAccentBrush}" />
-                            <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                                <TextBlock Text="All displays" Style="{StaticResource TitleTextStyle}" />
-                                <TextBlock Text="{Binding AllDisplaysStatusLabel}" FontSize="11" Foreground="{DynamicResource DashboardMutedBrush}" />
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Visibility="{Binding DisplaysPageVisibility}">
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="All displays" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Right" Foreground="{DynamicResource DashboardTextBrush}" />
+                                <TextBlock Text="{Binding AllDisplaysStatusLabel}" FontSize="11" HorizontalAlignment="Right" Foreground="{DynamicResource DashboardMutedBrush}" />
                             </StackPanel>
                             <TextBox
-                                Grid.Column="2"
                                 Style="{StaticResource HotkeyBoxStyle}"
                                 Text="{Binding AllDisplaysHotkeyDisplayText, Mode=OneWay}"
                                 Tag="all-displays"
@@ -203,49 +71,143 @@
                                 PreviewKeyDown="HotkeyTextBox_KeyDown"
                                 AutomationProperties.Name="All displays hotkey" />
                             <controls:HdrPillToggle
-                                Grid.Column="3"
                                 Margin="12,0,0,0"
                                 IsChecked="{Binding IsAllDisplaysHdrEnabled, Mode=OneWay}"
                                 IsEnabled="{Binding CanToggleAllDisplays}"
                                 Toggled="AllDisplaysHdrToggle_Toggled"
                                 AutomationProperties.Name="Toggle HDR for all displays" />
-                        </Grid>
-                    </Border>
+                        </StackPanel>
+                        <Button
+                            Margin="14,0,0,0"
+                            Style="{StaticResource IconButtonStyle}"
+                            Command="{Binding RefreshCommand}"
+                            Visibility="{Binding RefreshButtonVisibility}"
+                            ToolTip="Refresh display list"
+                            AutomationProperties.Name="Refresh display list">
+                            <TextBlock Style="{StaticResource IconStyle}" Text="&#xE72C;" FontSize="14" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,0,2,5">
+            <Grid Grid.Row="1" Margin="20,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Margin="0,22,0,18">
+                    <TextBlock
+                        Text="{Binding CurrentPageTitle}"
+                        FontSize="22"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource DashboardTextBrush}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <TextBlock
+                            Text="{Binding CurrentPageSubtitle}"
+                            FontSize="12"
+                            Foreground="{DynamicResource DashboardMutedBrush}" />
+                        <TextBlock
+                            Text="{Binding HdrCapableCountLabel}"
+                            Visibility="{Binding DisplaysPageVisibility}"
+                            FontSize="12"
+                            Margin="8,0,0,0"
+                            Foreground="{DynamicResource DashboardMutedBrush}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid Grid.Row="1" Visibility="{Binding DisplaysPageVisibility}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,5">
                             <ItemsControl
                                 ItemsSource="{Binding Monitors}"
                                 IsEnabled="{Binding CanSelectMonitors}"
                                 Visibility="{Binding MonitorListVisibility}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,6">
+                                        <StackPanel Width="190" Margin="0,0,18,22">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CanSelect}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.5" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+
+                                            <!-- The display as a monitor: the state is the picture. -->
+                                            <Border Height="107" CornerRadius="6" BorderThickness="5">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background" Value="{DynamicResource DashboardCardBrush}" />
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource DashboardBezelBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsHdrEnabled}" Value="True">
+                                                                <Setter Property="Background" Value="{DynamicResource DashboardAccentFillBrush}" />
+                                                                <Setter Property="BorderBrush" Value="{DynamicResource DashboardAccentFillBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                    <TextBlock FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="n/a" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource DashboardMutedBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding CanSelect}" Value="True">
+                                                                        <Setter Property="Text" Value="SDR" />
+                                                                        <Setter Property="Foreground" Value="{DynamicResource DashboardTextBrush}" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsHdrEnabled}" Value="True">
+                                                                        <Setter Property="Text" Value="HDR" />
+                                                                        <Setter Property="Foreground" Value="{DynamicResource DashboardOnAccentBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock
+                                                        Text="{Binding StatusDetail}"
+                                                        FontSize="11"
+                                                        Margin="0,4,0,0"
+                                                        HorizontalAlignment="Center"
+                                                        TextTrimming="CharacterEllipsis">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{DynamicResource DashboardMutedBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsHdrEnabled}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource DashboardOnAccentBrush}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Width="26" Height="8" Background="{DynamicResource DashboardBezelBrush}" HorizontalAlignment="Center" />
+                                            <Border Width="70" Height="4" CornerRadius="2" Background="{DynamicResource DashboardBezelBrush}" HorizontalAlignment="Center" />
+
+                                            <TextBlock
+                                                Text="{Binding Name}"
+                                                Style="{StaticResource TitleTextStyle}"
+                                                TextTrimming="CharacterEllipsis"
+                                                Margin="0,12,0,8" />
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock
-                                                    Style="{StaticResource IconStyle}"
-                                                    Text="&#xE7F4;"
-                                                    FontSize="16"
-                                                    Foreground="{DynamicResource DashboardAccentBrush}" />
-                                                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center">
-                                                    <TextBlock
-                                                        Text="{Binding Name}"
-                                                        Style="{StaticResource TitleTextStyle}"
-                                                        TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock
-                                                        Text="{Binding StatusDetail}"
-                                                        FontSize="11"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        Foreground="{DynamicResource DashboardMutedBrush}" />
-                                                </StackPanel>
                                                 <TextBox
-                                                    Grid.Column="2"
                                                     Style="{StaticResource HotkeyBoxStyle}"
                                                     IsEnabled="{Binding CanSelect, Mode=OneWay}"
                                                     Text="{Binding HotkeyDisplayText, Mode=OneWay}"
@@ -254,15 +216,14 @@
                                                     PreviewKeyDown="HotkeyTextBox_KeyDown"
                                                     AutomationProperties.Name="{Binding Name, StringFormat='{}{0} hotkey'}" />
                                                 <controls:HdrPillToggle
-                                                    Grid.Column="3"
-                                                    Margin="12,0,0,0"
+                                                    Grid.Column="2"
                                                     IsChecked="{Binding IsHdrEnabled, Mode=OneWay}"
                                                     IsEnabled="{Binding CanSelect, Mode=OneWay}"
                                                     Toggled="MonitorHdrToggle_Toggled"
                                                     AutomationProperties.Name="{Binding Name}"
                                                     AutomationProperties.HelpText="{Binding StatusLabel}" />
                                             </Grid>
-                                        </Border>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
@@ -301,19 +262,9 @@
                 </Grid>
 
                 <Grid Grid.Row="1" Visibility="{Binding SettingsPageVisibility}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-                    <TextBlock
-                        Text="General"
-                        FontSize="13"
-                        FontWeight="SemiBold"
-                        Margin="5,0,5,12"
-                        Foreground="{DynamicResource DashboardMutedBrush}" />
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="0,0,2,5">
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="0,0,0,5" MaxWidth="560" HorizontalAlignment="Left">
+                            <Border Style="{StaticResource RowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -325,11 +276,8 @@
                                     </StackPanel>
                                     <Button
                                         Grid.Column="1"
+                                        Style="{StaticResource IconButtonStyle}"
                                         Click="ThemeToggle_Click"
-                                        Width="36"
-                                        Height="32"
-                                        Padding="0"
-                                        VerticalAlignment="Center"
                                         ToolTip="{Binding ThemeToggleName}"
                                         AutomationProperties.Name="{Binding ThemeToggleName}">
                                         <TextBlock Style="{StaticResource IconStyle}" Text="{Binding ThemeGlyph}" FontSize="15" HorizontalAlignment="Center" />
@@ -337,7 +285,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                            <Border Style="{StaticResource RowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -358,7 +306,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                            <Border Style="{StaticResource RowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -380,7 +328,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                            <Border Style="{StaticResource RowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -402,7 +350,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8">
+                            <Border Style="{StaticResource RowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -421,7 +369,7 @@
                                 </Grid>
                             </Border>
 
-                            <Border Style="{StaticResource CardStyle}">
+                            <Border Style="{StaticResource RowStyle}" BorderThickness="0,1,0,1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -446,68 +394,77 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
-
-                <Border
-                    Grid.Row="0"
-                    Grid.RowSpan="2"
-                    Visibility="{Binding NotificationVisibility}"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Bottom"
-                    MaxWidth="420"
-                    Margin="0,0,0,12"
-                    Padding="14,10,8,10"
-                    CornerRadius="12"
-                    Background="{DynamicResource DashboardToastBrush}"
-                    BorderBrush="{DynamicResource DashboardCardBorderBrush}"
-                    BorderThickness="1"
-                    AutomationProperties.LiveSetting="Polite">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="18" ShadowDepth="3" Opacity="0.18" />
-                    </Border.Effect>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock
-                            Style="{StaticResource IconStyle}"
-                            Text="{Binding NotificationGlyph}"
-                            FontSize="16"
-                            Foreground="{Binding NotificationIconBrush}"
-                            VerticalAlignment="Top"
-                            Margin="0,2,10,0" />
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock
-                                Text="{Binding NotificationTitle}"
-                                FontSize="13"
-                                FontWeight="SemiBold"
-                                TextWrapping="Wrap"
-                                Foreground="{DynamicResource DashboardTextBrush}" />
-                            <TextBlock
-                                Text="{Binding NotificationMessage}"
-                                FontSize="12"
-                                Margin="0,1,0,0"
-                                TextWrapping="Wrap"
-                                Foreground="{DynamicResource DashboardMutedBrush}" />
-                        </StackPanel>
-                        <Button
-                            Grid.Column="2"
-                            Click="NotificationClose_Click"
-                            Background="Transparent"
-                            BorderThickness="0"
-                            Padding="6"
-                            Margin="10,0,0,0"
-                            MinWidth="0"
-                            MinHeight="0"
-                            VerticalAlignment="Top"
-                            ToolTip="Dismiss"
-                            AutomationProperties.Name="Dismiss notification">
-                            <TextBlock Style="{StaticResource IconStyle}" Text="&#xE711;" FontSize="10" />
-                        </Button>
-                    </Grid>
-                </Border>
             </Grid>
+
+            <Border
+                Grid.Row="2"
+                Padding="20,8"
+                BorderBrush="{DynamicResource DashboardCardBorderBrush}"
+                BorderThickness="0,1,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding DetectedMonitorCountLabel}" FontSize="11" Foreground="{DynamicResource DashboardMutedBrush}" />
+                    <TextBlock Text="{Binding LastUpdatedText}" FontSize="11" Margin="16,0,0,0" Foreground="{DynamicResource DashboardMutedBrush}" />
+                    <TextBlock Text="{Binding AppVersionLabel, Mode=OneTime}" FontSize="11" Margin="16,0,0,0" Foreground="{DynamicResource DashboardMutedBrush}" />
+                </StackPanel>
+            </Border>
+
+            <Border
+                Grid.Row="1"
+                Grid.RowSpan="2"
+                Visibility="{Binding NotificationVisibility}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                MaxWidth="420"
+                Margin="0,0,0,48"
+                Padding="14,10,8,10"
+                CornerRadius="8"
+                Background="{DynamicResource DashboardToastBrush}"
+                BorderBrush="{DynamicResource DashboardCardBorderBrush}"
+                BorderThickness="1"
+                AutomationProperties.LiveSetting="Polite">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Style="{StaticResource IconStyle}"
+                        Text="{Binding NotificationGlyph}"
+                        FontSize="16"
+                        Foreground="{Binding NotificationIconBrush}"
+                        VerticalAlignment="Top"
+                        Margin="0,2,10,0" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{Binding NotificationTitle}"
+                            FontSize="13"
+                            FontWeight="SemiBold"
+                            TextWrapping="Wrap"
+                            Foreground="{DynamicResource DashboardTextBrush}" />
+                        <TextBlock
+                            Text="{Binding NotificationMessage}"
+                            FontSize="12"
+                            Margin="0,1,0,0"
+                            TextWrapping="Wrap"
+                            Foreground="{DynamicResource DashboardMutedBrush}" />
+                    </StackPanel>
+                    <Button
+                        Grid.Column="2"
+                        Click="NotificationClose_Click"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Padding="6"
+                        Margin="10,0,0,0"
+                        MinWidth="0"
+                        MinHeight="0"
+                        VerticalAlignment="Top"
+                        ToolTip="Dismiss"
+                        AutomationProperties.Name="Dismiss notification">
+                        <TextBlock Style="{StaticResource IconStyle}" Text="&#xE711;" FontSize="10" />
+                    </Button>
+                </Grid>
+            </Border>
         </Grid>
 
         <!-- In-window dialog; WPF has no dialog with freely named buttons. -->
@@ -517,15 +474,12 @@
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Padding="24,20"
-                CornerRadius="12"
+                CornerRadius="8"
                 Background="{DynamicResource DashboardToastBrush}"
                 BorderBrush="{DynamicResource DashboardCardBorderBrush}"
                 BorderThickness="1"
                 KeyboardNavigation.TabNavigation="Cycle"
                 KeyboardNavigation.DirectionalNavigation="Cycle">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.22" />
-                </Border.Effect>
                 <StackPanel>
                     <TextBlock x:Name="DialogTitle" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource DashboardTextBrush}" />
                     <TextBlock x:Name="DialogMessage" Margin="0,10,0,20" Style="{StaticResource MutedTextStyle}" FontSize="13" />
